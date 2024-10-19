@@ -1,0 +1,39 @@
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <script src="./../midi-script-manager.js"></script>
+    <script src="./script.js"></script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body class="flex-col">
+    <div>
+      <button onclick="midi.reset()">Reset</button>
+    </div>
+    <div id="detail" class="flex-row">
+      <div>
+        <span>Device</span>
+        <span data-field="device"></span>
+        <span>Message</span>
+        <span data-field="message"></span>
+        <span>Channel</span>
+        <span data-field="channel"></span>
+        <span>Data1</span>
+        <div class="flex-row">
+          <span data-field="data1"></span>
+          <input type="text" data-field="keyName" disabled />
+        </div>
+        <span>Data2</span>
+        <span data-field="data2"></span>
+      </div>
+      <div class="flex-col">
+        <div class="flex-row">
+          <span>Script</span>
+          <span style="margin-left: 1rem">Name：</span>
+          <input type="text" data-field="scriptName" disabled />
+        </div>
+        <textarea type="text" data-field="script" disabled></textarea>
+      </div>
+    </div>
+    <div id="keymap"></div>
+  </body>
+</html>

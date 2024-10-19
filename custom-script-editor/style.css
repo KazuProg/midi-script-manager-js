@@ -1,0 +1,105 @@
+body {
+  background: #333;
+  color: white;
+  margin: 0;
+  height: 100vh; /* 画面の高さに対応 */
+  overflow: hidden;
+}
+
+body > * {
+  padding: 0.5rem;
+}
+
+#detail {
+  align-items: flex-start;
+  gap: 10vw;
+}
+
+#detail > :nth-child(1) {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 3px;
+}
+
+#detail > :nth-child(1) > :nth-child(odd) {
+  width: 5rem;
+  position: relative;
+}
+
+#detail > :nth-child(1) > :nth-child(odd)::after {
+  content: "：";
+  position: absolute;
+  right: 0;
+}
+
+#detail > :nth-child(1) input[data-field="keyName"] {
+  margin-left: 1rem;
+}
+
+#detail > :nth-child(2) {
+  flex-grow: 1;
+}
+
+#detail > :nth-child(2) textarea {
+  flex-grow: 1;
+  min-height: 3rem;
+  margin-top: 0.5rem;
+}
+
+#keymap {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 5px;
+  overflow: auto;
+}
+
+#keymap button {
+  color: white;
+  background: #333;
+  border: solid 3px #555;
+  border-radius: 3px;
+}
+
+#keymap button.active {
+  border: solid 3px #ff9900;
+}
+
+#keymap button[disabled] {
+  color: #555;
+  background: #333;
+}
+
+#keymap hr {
+  border: none;
+  margin: 5px 0;
+  margin-top: 0;
+}
+
+input,
+textarea {
+  width: 100%;
+  background: #222;
+  color: white;
+  border: none;
+  field-sizing: content;
+  resize: none;
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+}
+
+input {
+  border-bottom: solid 2px #555;
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
