@@ -7,6 +7,13 @@ const midi = new MIDIScriptManager({
   onMessage: (status, channel, data1, data2) => {
     showDetails(status, channel, data1, data2);
   },
+  onDeviceChange: (device) => {
+    if (device) {
+      deviceDetail.device(`${device.name} (${device.manufacturer})`);
+    } else {
+      deviceDetail.device(``);
+    }
+  },
 });
 
 window.addEventListener("load", async () => {
@@ -26,9 +33,7 @@ window.addEventListener("load", async () => {
   });
 
   try {
-    const device = await midi.requestAccess();
-
-    deviceDetail.device(`${device.name} (${device.manufacturer})`);
+    await midi.requestAccess();
   } catch (error) {
     alert(error);
     return;

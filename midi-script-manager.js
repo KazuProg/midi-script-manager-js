@@ -15,6 +15,7 @@ class MIDIScriptManager {
       localStorageKey: "midi-scripts",
       executeScript: false,
       onMessage: null,
+      onDeviceChange: null,
       ...options,
     };
     if (this.#options.localStorageKey) {
@@ -35,21 +36,32 @@ class MIDIScriptManager {
 
     try {
       const midiAccess = await navigator.requestMIDIAccess();
-      const inputs = Array.from(midiAccess.inputs.values());
+      midiAccess.onstatechange = (e) => {
+        this.#MIDIDeviceChanged(e.target);
+      };
+      this.#MIDIDeviceChanged(midiAccess);
+      return;
+    } catch (error) {
+      throw new Error(`Failed to request MIDI access: ${error.message}`);
+    }
+  }
 
-      if (inputs.length === 0) {
-        throw new Error("No MIDI input devices found.");
-      }
+  #MIDIDeviceChanged(midiAccess) {
+    const inputs = Array.from(midiAccess.inputs.values());
+    let deviceInfo = null;
 
+    if (inputs.length !== 0) {
       const input = inputs[0];
       input.onmidimessage = (e) => this.#onMIDIMessage(e);
 
-      return {
+      deviceInfo = {
         manufacturer: input.manufacturer,
         name: input.name,
       };
-    } catch (error) {
-      throw new Error(`Failed to request MIDI access: ${error.message}`);
+    }
+
+    if (this.#options.onDeviceChange) {
+      this.#options.onDeviceChange(deviceInfo);
     }
   }
 
