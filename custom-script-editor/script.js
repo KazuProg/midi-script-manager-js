@@ -2,17 +2,15 @@
 
 let deviceDetail = {};
 let selectedKey = 0;
+let currentDevice = null;
 
 const midi = new MIDIScriptManager({
-  onMessage: (status, channel, data1, data2) => {
+  onMessage: (device, status, channel, data1, data2) => {
+    showDevice(device);
     showDetails(status, channel, data1, data2);
   },
   onDeviceChange: (device) => {
-    if (device) {
-      deviceDetail.device(`${device.name} (${device.manufacturer})`);
-    } else {
-      deviceDetail.device(``);
-    }
+    showDevice(device);
   },
 });
 
@@ -39,10 +37,60 @@ window.addEventListener("load", async () => {
     return;
   }
 
+  // イベントリスナー登録
+  document
+    .querySelector("#detail input[data-field=keyName]")
+    .addEventListener("input", (e) => {
+      const detail = midi.setKeyName(
+        currentDevice,
+        selectedKey,
+        e.target.value
+      );
+      updateDetail(detail);
+    });
+  document
+    .querySelector("#detail input[data-field=scriptName]")
+    .addEventListener("input", (e) => {
+      const detail = midi.setScriptName(
+        currentDevice,
+        selectedKey,
+        e.target.value
+      );
+      updateDetail(detail);
+    });
+  document
+    .querySelector("#detail textarea[data-field=script]")
+    .addEventListener("input", (e) => {
+      const detail = midi.setScript(currentDevice, selectedKey, e.target.value);
+      updateDetail(detail);
+    });
+
+  function updateDetail(detail) {
+    const keyBtn = document.querySelectorAll("#keymap > button")[selectedKey];
+    keyBtn.querySelector(".keyname").innerText = detail.name;
+    keyBtn.querySelector(".confname").innerText = "----";
+    if (detail.script) {
+      keyBtn.querySelector(".confname").innerText = detail.script.name;
+      document.querySelector(
+        "#detail [data-field=scriptName]"
+      ).disabled = false;
+    } else {
+      document.querySelector("#detail [data-field=scriptName]").value = "";
+      document.querySelector("#detail [data-field=scriptName]").disabled = true;
+    }
+  }
+});
+
+function showDevice(device) {
+  currentDevice = device;
+
+  deviceDetail.device(device ? `${device.name} (${device.manufacturer})` : "");
+
   // KeyMap作成＆keys配列初期化
   const keymapElem = document.querySelector("#keymap");
+  keymapElem.innerHTML = "";
   for (let i = 0; i <= 0x7f; i++) {
-    const keyInfo = midi.getKeyInfo(i);
+    const keyInfo = midi.getKeyInfo(currentDevice, i);
 
     let btn = document.createElement("button");
     btn.innerHTML =
@@ -57,41 +105,7 @@ window.addEventListener("load", async () => {
     };
     keymapElem.appendChild(btn);
   }
-
-  // イベントリスナー登録
-  document
-    .querySelector("#detail input[data-field=keyName]")
-    .addEventListener("input", (e) => {
-      const detail = midi.setKeyName(selectedKey, e.target.value);
-      updateDetail(detail);
-    });
-  document
-    .querySelector("#detail input[data-field=scriptName]")
-    .addEventListener("input", (e) => {
-      const detail = midi.setScriptName(selectedKey, e.target.value);
-      updateDetail(detail);
-    });
-  document
-    .querySelector("#detail textarea[data-field=script]")
-    .addEventListener("input", (e) => {
-      const detail = midi.setScript(selectedKey, e.target.value);
-      updateDetail(detail);
-    });
-
-  function updateDetail(detail) {
-    const keyBtn = document.querySelectorAll("#keymap > button")[selectedKey];
-    keyBtn.querySelector(".keyname").innerText = detail.name;
-    keyBtn.querySelector(".confname").innerText = detail.scriptName || "----";
-    if (detail.script) {
-      document.querySelector(
-        "#detail [data-field=scriptName]"
-      ).disabled = false;
-    } else {
-      document.querySelector("#detail [data-field=scriptName]").value = "";
-      document.querySelector("#detail [data-field=scriptName]").disabled = true;
-    }
-  }
-});
+}
 
 function showDetails(status, channel, number, value = null) {
   const keyBtns = document.querySelectorAll("#keymap > button");
@@ -104,7 +118,7 @@ function showDetails(status, channel, number, value = null) {
     .toString(16)
     .padStart(2, "0")}`;
 
-  const keyInfo = midi.getKeyInfo(selectedKey);
+  const keyInfo = midi.getKeyInfo(currentDevice, selectedKey);
   deviceDetail.message(
     status != null ? `0x${hex(status)} (${getKeyByStatus(status)})` : ""
   );

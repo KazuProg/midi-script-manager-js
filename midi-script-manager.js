@@ -8,6 +8,7 @@ const MIDIMessageType = {
 
 class MIDIScriptManager {
   #options = {};
+  #midiKeyMappings = [];
   #controls = [];
 
   constructor(options = {}) {
@@ -21,10 +22,10 @@ class MIDIScriptManager {
     if (this.#options.localStorageKey) {
       window.addEventListener("storage", (event) => {
         if (event.key === this.#options.localStorageKey) {
-          this.#controls = JSON.parse(event.newValue) || [];
+          this.#midiKeyMappings = JSON.parse(event.newValue) || [];
         }
       });
-      this.#controls =
+      this.#midiKeyMappings =
         JSON.parse(localStorage.getItem(this.#options.localStorageKey)) || [];
     }
   }
@@ -37,32 +38,54 @@ class MIDIScriptManager {
     try {
       const midiAccess = await navigator.requestMIDIAccess();
       midiAccess.onstatechange = (e) => {
-        this.#MIDIDeviceChanged(e.target);
+        if (e.port.type === "input") {
+          this.#MIDIInputChanged(e.port);
+        }
       };
-      this.#MIDIDeviceChanged(midiAccess);
+      midiAccess.inputs.forEach((input) => {
+        this.#MIDIInputChanged(input);
+      });
       return;
     } catch (error) {
       throw new Error(`Failed to request MIDI access: ${error.message}`);
     }
   }
 
-  #MIDIDeviceChanged(midiAccess) {
-    const inputs = Array.from(midiAccess.inputs.values());
-    let deviceInfo = null;
+  #MIDIInputChanged(MIDIInput) {
+    if (MIDIInput.state !== "connected") {
+      return;
+    }
 
-    if (inputs.length !== 0) {
-      const input = inputs[0];
-      input.onmidimessage = (e) => this.#onMIDIMessage(e);
+    MIDIInput.onmidimessage = (e) => this.#onMIDIMessage(e);
 
-      deviceInfo = {
-        manufacturer: input.manufacturer,
-        name: input.name,
-      };
+    let device = {
+      name: MIDIInput.name,
+      manufacturer: MIDIInput.manufacturer,
+    };
+
+    if (this.#getKeyMap(device.name, device.manufacturer) === null) {
+      this.#midiKeyMappings.push({
+        device,
+        keymap: new Array(0x80).fill(null),
+      });
+      this.#saveControls();
     }
 
     if (this.#options.onDeviceChange) {
-      this.#options.onDeviceChange(deviceInfo);
+      this.#options.onDeviceChange(device);
     }
+  }
+
+  #getKeyMap(name, manufacturer) {
+    for (const midiKeyMapping of this.#midiKeyMappings) {
+      if (
+        midiKeyMapping.device.name === name &&
+        midiKeyMapping.device.manufacturer === manufacturer
+      ) {
+        return midiKeyMapping.keymap;
+      }
+    }
+    return null;
   }
 
   #onMIDIMessage(midiMessage) {
@@ -74,19 +97,32 @@ class MIDIScriptManager {
       return;
     }
 
-    if (!this.#controls[data1]) {
-      this.#controls[data1] = {
+    const device = {
+      name: midiMessage.target.name,
+      manufacturer: midiMessage.target.manufacturer,
+    };
+
+    const midiKeyMap = this.#getKeyMap(device.name, device.manufacturer);
+
+    if (midiKeyMap === null) {
+      throw new Error(
+        "Variable 'MIDIScriptManager.#midiKeyMappings' is not initialized. This should never happen."
+      );
+    }
+
+    if (!midiKeyMap[data1]) {
+      midiKeyMap[data1] = {
         name: "0x" + hex(data1),
       };
       this.#saveControls();
     }
 
     if (this.#options.onMessage) {
-      this.#options.onMessage(messageType, channel, data1, data2);
+      this.#options.onMessage(device, messageType, channel, data1, data2);
     }
 
     if (this.#options.executeScript) {
-      if (this.#controls[data1]) {
+      if (midiKeyMap[data1].script) {
         try {
           const scriptFunction = new Function(
             "status",
@@ -94,7 +130,7 @@ class MIDIScriptManager {
             "data2",
             "messageType",
             "channel",
-            this.#controls[data1].script
+            midiKeyMap[data1].script.code
           );
           scriptFunction(status, data1, data2, messageType, channel);
         } catch (error) {
@@ -107,7 +143,12 @@ class MIDIScriptManager {
     }
   }
 
-  getKeyInfo(key) {
+  getKeyInfo(device, key) {
+    const keyMap = this.#getKeyMap(device.name, device.manufacturer);
+    if (keyMap === null) {
+      return null;
+    }
+
     const hex = (val, len = 2) => {
       return val.toString(16).toUpperCase().padStart(len, "0");
     };
@@ -118,24 +159,27 @@ class MIDIScriptManager {
       scriptName: null,
       script: null,
     };
-    if (this.#controls[key]) {
+
+    if (keyMap[key]) {
       info.enabled = true;
-      if (this.#controls[key].name) {
-        info.keyName = this.#controls[key].name;
+      if (keyMap[key].name) {
+        info.keyName = keyMap[key].name;
       }
 
-      if (this.#controls[key].script) {
-        info.script = this.#controls[key].script;
-        if (this.#controls[key].scriptName) {
-          info.scriptName = this.#controls[key].scriptName;
-        }
+      if (keyMap[key].script) {
+        info.scriptName = keyMap[key].script.name;
+        info.script = keyMap[key].script.code;
       }
     }
     return info;
   }
 
-  setKeyName(key, name) {
-    const control = this.#controls[key];
+  setKeyName(device, key, name) {
+    const keyMap = this.#getKeyMap(device.name, device.manufacturer);
+    if (keyMap === null) {
+      return null;
+    }
+    const control = keyMap[key];
     if (control) {
       const trimmed = name.trim();
       if (trimmed === "") {
@@ -148,30 +192,35 @@ class MIDIScriptManager {
     return control;
   }
 
-  setScript(key, script) {
-    const control = this.#controls[key];
+  setScript(device, key, script) {
+    const keyMap = this.#getKeyMap(device.name, device.manufacturer);
+    if (keyMap === null) {
+      return null;
+    }
+    const control = keyMap[key];
     if (control) {
       const trimmed = script.trim();
       if (trimmed === "") {
         delete control.script;
-        delete control.scriptName;
       } else {
-        control.script = trimmed;
+        control.script = {
+          name: "",
+          code: trimmed,
+        };
       }
       this.#saveControls();
     }
     return control;
   }
 
-  setScriptName(key, scriptName) {
-    const control = this.#controls[key];
+  setScriptName(device, key, scriptName) {
+    const keyMap = this.#getKeyMap(device.name, device.manufacturer);
+    if (keyMap === null) {
+      return null;
+    }
+    const control = keyMap[key];
     if (control && control.script) {
-      const trimmed = scriptName.trim();
-      if (trimmed === "") {
-        delete control.scriptName;
-      } else {
-        control.scriptName = trimmed;
-      }
+      control.script.name = scriptName.trim();
       this.#saveControls();
     }
     return control;
@@ -192,7 +241,7 @@ class MIDIScriptManager {
     if (this.#options.localStorageKey) {
       localStorage.setItem(
         this.#options.localStorageKey,
-        JSON.stringify(this.#controls)
+        JSON.stringify(this.#midiKeyMappings)
       );
     }
   }
