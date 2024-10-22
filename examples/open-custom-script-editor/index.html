@@ -1,0 +1,19 @@
+<script src="./../../midi-script-manager.js"></script>
+<script>
+  const midi = new MIDIScriptManager({
+    executeScript: true,
+  });
+  midi.requestAccess();
+
+  function showMessage(message) {
+    document.querySelector("#message").innerText = message;
+  }
+</script>
+
+<p>1. Please grant access to the MIDI device.</p>
+<p>2. Press the following button to open the editor.</p>
+<button onclick="midi.openCustomScriptEditor()">openEditor</button>
+<p>3. Please write a script like the following.</p>
+<pre><code>showMessage(`MIDI ControlChange control#${data1}: ${data2}`);</code></pre>
+<p>4. When you operate the MIDI device, the message appears below.</p>
+<span id="message"></span>

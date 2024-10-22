@@ -9,7 +9,7 @@ const MIDIMessageType = {
 class MIDIScriptManager {
   #options = {};
   #midiKeyMappings = [];
-  #controls = [];
+  #targetOrigin = null;
 
   constructor(options = {}) {
     this.#options = {
@@ -19,6 +19,29 @@ class MIDIScriptManager {
       onDeviceChange: null,
       ...options,
     };
+
+    const params = new URLSearchParams(window.location.search);
+    this.#targetOrigin = params.get("targetOrigin");
+    if (window.opener && this.#targetOrigin) {
+      this.#options.localStorageKey = null;
+      const listener = (event) => {
+        if (event.origin !== this.#targetOrigin) return;
+        if (event.data.sender && event.data.sender === "MIDIScriptManager") {
+          window.removeEventListener("message", listener);
+          this.#midiKeyMappings = event.data.data;
+          this.#options.onDeviceChange(this.#midiKeyMappings[0].device);
+        }
+      };
+      window.addEventListener("message", listener);
+      window.opener.postMessage(
+        {
+          sender: "MIDIScriptManager",
+          data: "window.loaded",
+        },
+        this.#targetOrigin
+      );
+    }
+
     if (this.#options.localStorageKey) {
       window.addEventListener("storage", (event) => {
         if (event.key === this.#options.localStorageKey) {
@@ -234,11 +257,54 @@ class MIDIScriptManager {
     }
   }
 
+  openCustomScriptEditor() {
+    const EditorOrigin = "https://kazuprog.github.io";
+    const EditorURL = `${EditorOrigin}/midi-script-manager-js/custom-script-editor/`;
+    const params = new URLSearchParams({
+      targetOrigin: location.origin,
+    });
+
+    const childWindow = window.open(
+      `${EditorURL}?${params.toString()}`,
+      "CustomScriptEditor",
+      "width=960,height=540"
+    );
+
+    window.addEventListener("message", (event) => {
+      if (event.origin !== EditorOrigin) return;
+      if (event.data.sender === "MIDIScriptManager") {
+        const data = event.data.data;
+        if (data === "window.loaded") {
+          childWindow.postMessage(
+            {
+              sender: "MIDIScriptManager",
+              data: this.#midiKeyMappings,
+            },
+            EditorOrigin
+          );
+          return;
+        }
+
+        this.#midiKeyMappings = data;
+        this.#saveControls();
+      }
+    });
+  }
+
   #saveControls() {
     if (this.#options.localStorageKey) {
       localStorage.setItem(
         this.#options.localStorageKey,
         JSON.stringify(this.#midiKeyMappings)
+      );
+    }
+    if (window.opener && this.#targetOrigin) {
+      window.opener.postMessage(
+        {
+          sender: "MIDIScriptManager",
+          data: this.#midiKeyMappings,
+        },
+        this.#targetOrigin
       );
     }
   }

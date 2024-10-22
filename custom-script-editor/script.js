@@ -4,17 +4,19 @@ let deviceDetail = {};
 let selectedKey = 0;
 let currentDevice = null;
 
-const midi = new MIDIScriptManager({
-  onMessage: (device, status, channel, data1, data2) => {
-    showDevice(device);
-    showDetails(status, channel, data1, data2);
-  },
-  onDeviceChange: (device) => {
-    showDevice(device);
-  },
-});
+let midi;
 
 window.addEventListener("load", async () => {
+  midi = new MIDIScriptManager({
+    onMessage: (device, status, channel, data1, data2) => {
+      showDevice(device);
+      showDetails(status, channel, data1, data2);
+    },
+    onDeviceChange: (device) => {
+      showDevice(device);
+    },
+  });
+
   // デバイス情報表示を簡略化するオブジェクト作成
   document.querySelectorAll("[data-field]").forEach((el) => {
     const property = el.getAttribute("data-field");
