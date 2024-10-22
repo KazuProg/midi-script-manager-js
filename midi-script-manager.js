@@ -223,10 +223,14 @@ class MIDIScriptManager {
       if (trimmed === "") {
         delete control.script;
       } else {
-        control.script = {
-          name: "",
-          code: trimmed,
-        };
+        if (control.script) {
+          control.script.code = trimmed;
+        } else {
+          control.script = {
+            name: "",
+            code: trimmed,
+          };
+        }
       }
       this.#saveControls();
     }
