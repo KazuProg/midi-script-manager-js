@@ -153,9 +153,21 @@ class MIDIScriptManager {
             "data2",
             "messageType",
             "channel",
+            "number",
+            "value",
+            "val",
             midiKeyMap[data1].script.code
           );
-          scriptFunction(status, data1, data2, messageType, channel);
+          scriptFunction(
+            status,
+            data1,
+            data2,
+            messageType,
+            channel,
+            data1,
+            data2,
+            data2 / 127
+          );
         } catch (error) {
           console.error(
             "An error occurred while executing the custom script:",
