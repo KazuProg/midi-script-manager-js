@@ -112,7 +112,7 @@ class MIDIScriptManager {
 
     if (!midiKeyMap[data1]) {
       midiKeyMap[data1] = {
-        name: "0x" + hex(data1),
+        name: "0x" + data1.toString(16).toUpperCase().padStart(2, "0"),
       };
       this.#saveControls();
     }
@@ -149,13 +149,10 @@ class MIDIScriptManager {
       return null;
     }
 
-    const hex = (val, len = 2) => {
-      return val.toString(16).toUpperCase().padStart(len, "0");
-    };
     const info = {
       key,
       enabled: false,
-      keyName: `0x${hex(key)}`,
+      keyName: `0x${key.toString(16).toUpperCase().padStart(2, "0")}`,
       scriptName: null,
       script: null,
     };
