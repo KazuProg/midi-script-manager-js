@@ -8,13 +8,12 @@ const MIDIMessageType = {
 
 class MIDIScriptManager {
   #options = {};
-  #midiKeyMappings = [];
+  #midiKeyMappings = null;
   #targetOrigin = null;
 
   constructor(options = {}) {
     this.#options = {
       localStorageKey: "midi-scripts",
-      requestAccess: true,
       executeScript: false,
       onMessage: null,
       onDeviceChange: null,
@@ -30,9 +29,6 @@ class MIDIScriptManager {
         if (event.data.sender && event.data.sender === "MIDIScriptManager") {
           window.removeEventListener("message", listener);
           this.#midiKeyMappings = event.data.data;
-          if (this.#options.requestAccess) {
-            this.#requestAccess();
-          }
           this.#options.onDeviceChange(this.#midiKeyMappings[0].device);
         }
       };
@@ -44,28 +40,36 @@ class MIDIScriptManager {
         },
         this.#targetOrigin
       );
+      return;
+    } else if (this.#options.localStorageKey) {
+      window.addEventListener("storage", (event) => {
+        if (event.key === this.#options.localStorageKey) {
+          this.#midiKeyMappings = JSON.parse(event.newValue) || [];
+        }
+      });
+      this.#midiKeyMappings =
+        JSON.parse(localStorage.getItem(this.#options.localStorageKey)) || [];
     } else {
-      if (this.#options.localStorageKey) {
-        window.addEventListener("storage", (event) => {
-          if (event.key === this.#options.localStorageKey) {
-            this.#midiKeyMappings = JSON.parse(event.newValue) || [];
-          }
-        });
-        this.#midiKeyMappings =
-          JSON.parse(localStorage.getItem(this.#options.localStorageKey)) || [];
-      }
-      if (this.#options.requestAccess) {
-        this.#requestAccess().catch((error) => {
-          throw new Error(`Failed to request MIDI access: ${error.message}`);
-        });
-      }
+      this.#midiKeyMappings = [];
     }
   }
 
-  async #requestAccess() {
+  async requestAccess() {
     if (!navigator.requestMIDIAccess) {
       throw new Error("Web MIDI API is not supported in this browser.");
     }
+
+    await new Promise((resolve) => {
+      if (this.#midiKeyMappings !== null) {
+        return resolve();
+      }
+      const intervalId = setInterval(() => {
+        if (this.#midiKeyMappings !== null) {
+          clearInterval(intervalId);
+          resolve();
+        }
+      }, 10);
+    });
 
     try {
       const midiAccess = await navigator.requestMIDIAccess();
