@@ -7,6 +7,7 @@ const MIDIMessageType = {
 };
 
 class MIDIScriptManager {
+  static scriptOrigin;
   #options = {};
   #midiKeyMappings = [];
   #targetOrigin = null;
@@ -274,8 +275,7 @@ class MIDIScriptManager {
   }
 
   openCustomScriptEditor() {
-    const EditorOrigin = "https://kazuprog.github.io";
-    const EditorURL = `${EditorOrigin}/midi-script-manager-js/custom-script-editor/`;
+    const EditorURL = `${MIDIScriptManager.scriptOrigin}/midi-script-manager-js/custom-script-editor/`;
     const params = new URLSearchParams({
       targetOrigin: location.origin,
     });
@@ -287,7 +287,7 @@ class MIDIScriptManager {
     );
 
     window.addEventListener("message", (event) => {
-      if (event.origin !== EditorOrigin) return;
+      if (event.origin !== MIDIScriptManager.scriptOrigin) return;
       if (event.data.sender === "MIDIScriptManager") {
         const data = event.data.data;
         if (data === "window.loaded") {
@@ -296,7 +296,7 @@ class MIDIScriptManager {
               sender: "MIDIScriptManager",
               data: this.#midiKeyMappings,
             },
-            EditorOrigin
+            MIDIScriptManager.scriptOrigin
           );
           return;
         }
@@ -324,4 +324,12 @@ class MIDIScriptManager {
       );
     }
   }
+}
+
+if (document.currentScript && document.currentScript.src) {
+  const scriptSrc = document.currentScript.src;
+  const scriptOrigin = new URL(scriptSrc).origin;
+  MIDIScriptManager.scriptOrigin = scriptOrigin;
+} else {
+  MIDIScriptManager.scriptOrigin = "https://kazuprog.github.io";
 }
