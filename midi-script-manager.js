@@ -29,6 +29,9 @@ class MIDIScriptManager {
         if (event.data.sender && event.data.sender === "MIDIScriptManager") {
           window.removeEventListener("message", listener);
           this.#midiKeyMappings = event.data.data;
+          this.#requestAccess().catch((error) => {
+            throw new Error(`Failed to request MIDI access: ${error.message}`);
+          });
           this.#options.onDeviceChange(this.#midiKeyMappings[0].device);
         }
       };
@@ -40,38 +43,42 @@ class MIDIScriptManager {
         },
         this.#targetOrigin
       );
-    }
-
-    if (this.#options.localStorageKey) {
-      window.addEventListener("storage", (event) => {
-        if (event.key === this.#options.localStorageKey) {
-          this.#midiKeyMappings = JSON.parse(event.newValue) || [];
-        }
+    } else {
+      if (this.#options.localStorageKey) {
+        window.addEventListener("storage", (event) => {
+          if (event.key === this.#options.localStorageKey) {
+            this.#midiKeyMappings = JSON.parse(event.newValue) || [];
+          }
+        });
+        this.#midiKeyMappings =
+          JSON.parse(localStorage.getItem(this.#options.localStorageKey)) || [];
+      }
+      this.#requestAccess().catch((error) => {
+        throw new Error(`Failed to request MIDI access: ${error.message}`);
       });
-      this.#midiKeyMappings =
-        JSON.parse(localStorage.getItem(this.#options.localStorageKey)) || [];
     }
   }
 
-  async requestAccess() {
+  #requestAccess() {
     if (!navigator.requestMIDIAccess) {
       throw new Error("Web MIDI API is not supported in this browser.");
     }
 
-    try {
-      const midiAccess = await navigator.requestMIDIAccess();
-      midiAccess.onstatechange = (e) => {
-        if (e.port.type === "input") {
-          this.#MIDIInputChanged(e.port);
-        }
-      };
-      midiAccess.inputs.forEach((input) => {
-        this.#MIDIInputChanged(input);
+    return navigator
+      .requestMIDIAccess()
+      .then((midiAccess) => {
+        midiAccess.onstatechange = (e) => {
+          if (e.port.type === "input") {
+            this.#MIDIInputChanged(e.port);
+          }
+        };
+        midiAccess.inputs.forEach((input) => {
+          this.#MIDIInputChanged(input);
+        });
+      })
+      .catch((error) => {
+        throw new Error(`Failed to request MIDI access: ${error.message}`);
       });
-      return;
-    } catch (error) {
-      throw new Error(`Failed to request MIDI access: ${error.message}`);
-    }
   }
 
   #MIDIInputChanged(MIDIInput) {
