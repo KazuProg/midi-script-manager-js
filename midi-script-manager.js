@@ -9,7 +9,7 @@ const MIDIMessageType = {
 class MIDIScriptManager {
   static scriptOrigin;
   #options = {};
-  #midiKeyMappings = [];
+  #midiKeyMappings = null;
   #targetOrigin = null;
 
   constructor(options = {}) {
@@ -41,9 +41,7 @@ class MIDIScriptManager {
         },
         this.#targetOrigin
       );
-    }
-
-    if (this.#options.localStorageKey) {
+    } else if (this.#options.localStorageKey) {
       window.addEventListener("storage", (event) => {
         if (event.key === this.#options.localStorageKey) {
           this.#midiKeyMappings = JSON.parse(event.newValue) || [];
@@ -51,6 +49,8 @@ class MIDIScriptManager {
       });
       this.#midiKeyMappings =
         JSON.parse(localStorage.getItem(this.#options.localStorageKey)) || [];
+    } else {
+      this.#midiKeyMappings = [];
     }
   }
 
@@ -58,6 +58,17 @@ class MIDIScriptManager {
     if (!navigator.requestMIDIAccess) {
       throw new Error("Web MIDI API is not supported in this browser.");
     }
+
+    await new Promise((resolve) => {
+      if (this.#midiKeyMappings !== null) return resolve();
+
+      const intervalId = setInterval(() => {
+        if (this.#midiKeyMappings !== null) {
+          clearInterval(intervalId);
+          resolve();
+        }
+      }, 10);
+    });
 
     try {
       const midiAccess = await navigator.requestMIDIAccess();
