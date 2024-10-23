@@ -31,11 +31,7 @@ class MIDIScriptManager {
           window.removeEventListener("message", listener);
           this.#midiKeyMappings = event.data.data;
           if (this.#options.requestAccess) {
-            this.#requestAccess().catch((error) => {
-              throw new Error(
-                `Failed to request MIDI access: ${error.message}`
-              );
-            });
+            this.#requestAccess();
           }
           this.#options.onDeviceChange(this.#midiKeyMappings[0].device);
         }
