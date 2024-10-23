@@ -7,6 +7,7 @@ let currentDevice = null;
 let midi;
 
 window.addEventListener("load", async () => {
+  try{
   midi = new MIDIScriptManager({
     onMessage: (device, status, channel, data1, data2) => {
       showDevice(device);
@@ -16,6 +17,10 @@ window.addEventListener("load", async () => {
       showDevice(device);
     },
   });
+} catch (error) {
+    alert(error);
+    return;
+  }
 
   // デバイス情報表示を簡略化するオブジェクト作成
   document.querySelectorAll("[data-field]").forEach((el) => {
@@ -32,12 +37,6 @@ window.addEventListener("load", async () => {
     };
   });
 
-  try {
-    //await midi.requestAccess();
-  } catch (error) {
-    alert(error);
-    return;
-  }
 
   // イベントリスナー登録
   document
