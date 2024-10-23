@@ -33,7 +33,7 @@ window.addEventListener("load", async () => {
   });
 
   try {
-    await midi.requestAccess();
+    //await midi.requestAccess();
   } catch (error) {
     alert(error);
     return;
