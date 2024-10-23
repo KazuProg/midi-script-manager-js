@@ -41,6 +41,9 @@ class MIDIScriptManager {
         },
         this.#targetOrigin
       );
+      window.opener.addEventListener("beforeunload", () => {
+        window.close();
+      });
     } else if (this.#options.localStorageKey) {
       window.addEventListener("storage", (event) => {
         if (event.key === this.#options.localStorageKey) {
