@@ -7,6 +7,7 @@ const MIDIMessageType = {
 };
 
 class MIDIScriptManager {
+  static noteNames = "C|C#|D|D#|E|F|F#|G|G#|A|A#|B".split("|");
   static scriptOrigin;
   #options = {};
   #midiKeyMappings = null;
@@ -104,7 +105,10 @@ class MIDIScriptManager {
     if (this.#getKeyMap(device.name, device.manufacturer) === null) {
       this.#midiKeyMappings.push({
         device,
-        keymap: new Array(0x80).fill(null),
+        keymap: {
+          cc: new Array(0x80).fill(null),
+          note: new Array(0x80).fill(null),
+        },
       });
       this.#saveControls();
     }
@@ -114,13 +118,21 @@ class MIDIScriptManager {
     }
   }
 
-  #getKeyMap(name, manufacturer) {
+  #getKeyMap(name, manufacturer, messageType = null) {
     for (const midiKeyMapping of this.#midiKeyMappings) {
       if (
         midiKeyMapping.device.name === name &&
         midiKeyMapping.device.manufacturer === manufacturer
       ) {
-        return midiKeyMapping.keymap;
+        switch (messageType) {
+          case null:
+            return midiKeyMapping.keymap;
+          case MIDIMessageType.NoteOn:
+          case MIDIMessageType.NoteOff:
+            return midiKeyMapping.keymap.note;
+          case MIDIMessageType.ControlChange:
+            return midiKeyMapping.keymap.cc;
+        }
       }
     }
     return null;
@@ -131,16 +143,16 @@ class MIDIScriptManager {
     const messageType = status & 0xf0;
     const channel = status & 0x0f;
 
-    if (messageType !== MIDIMessageType.ControlChange) {
-      return;
-    }
-
     const device = {
       name: midiMessage.target.name,
       manufacturer: midiMessage.target.manufacturer,
     };
 
-    const midiKeyMap = this.#getKeyMap(device.name, device.manufacturer);
+    const midiKeyMap = this.#getKeyMap(
+      device.name,
+      device.manufacturer,
+      messageType
+    );
 
     if (midiKeyMap === null) {
       throw new Error(
@@ -149,9 +161,7 @@ class MIDIScriptManager {
     }
 
     if (!midiKeyMap[data1]) {
-      midiKeyMap[data1] = {
-        name: "0x" + data1.toString(16).toUpperCase().padStart(2, "0"),
-      };
+      midiKeyMap[data1] = {};
       this.#saveControls();
     }
 
@@ -193,11 +203,13 @@ class MIDIScriptManager {
     }
   }
 
-  getKeyInfo(device, key) {
-    const keyMap = this.#getKeyMap(device.name, device.manufacturer);
-    if (keyMap === null) {
-      return null;
-    }
+  getKeyInfo(device, messageType, key) {
+    const keyMap = this.#getKeyMap(
+      device.name,
+      device.manufacturer,
+      messageType
+    );
+    if (keyMap === null) return null;
 
     const info = {
       key,
@@ -206,6 +218,13 @@ class MIDIScriptManager {
       scriptName: null,
       script: null,
     };
+
+    if (
+      messageType === MIDIMessageType.NoteOff ||
+      messageType === MIDIMessageType.NoteOn
+    ) {
+      info.keyName = this.#getNoteName(key);
+    }
 
     if (keyMap[key]) {
       info.enabled = true;
@@ -218,63 +237,67 @@ class MIDIScriptManager {
         info.script = keyMap[key].script.code;
       }
     }
+
     return info;
   }
 
-  setKeyName(device, key, name) {
-    const keyMap = this.#getKeyMap(device.name, device.manufacturer);
-    if (keyMap === null) {
-      return null;
-    }
-    const control = keyMap[key];
-    if (control) {
-      const trimmed = name.trim();
-      if (trimmed === "") {
-        delete control.name;
-      } else {
-        control.name = trimmed;
-      }
-      this.#saveControls();
-    }
-    return control;
+  setKeyName(device, messageType, key, keyName) {
+    return this.#patchKey(device, messageType, key, { keyName });
   }
 
-  setScript(device, key, script) {
-    const keyMap = this.#getKeyMap(device.name, device.manufacturer);
-    if (keyMap === null) {
-      return null;
-    }
-    const control = keyMap[key];
-    if (control) {
-      const trimmed = script.trim();
-      if (trimmed === "") {
-        delete control.script;
-      } else {
-        if (control.script) {
-          control.script.code = trimmed;
-        } else {
-          control.script = {
-            name: "",
-            code: trimmed,
-          };
+  setScript(device, messageType, key, scriptCode) {
+    return this.#patchKey(device, messageType, key, { scriptCode });
+  }
+
+  setScriptName(device, messageType, key, scriptName) {
+    return this.#patchKey(device, messageType, key, { scriptName });
+  }
+
+  #patchKey(device, messageType, key, patch = {}) {
+    const keyMap = this.#getKeyMap(
+      device.name,
+      device.manufacturer,
+      messageType
+    );
+
+    if (keyMap && keyMap[key]) {
+      const control = keyMap[key];
+      for (const patchKey in patch) {
+        let value = patch[patchKey].trim();
+        if (value === "") value = null;
+
+        switch (patchKey) {
+          case "keyName":
+            control.name = value;
+            break;
+          case "scriptName":
+            control.script = {
+              ...control.script,
+              name: value,
+            };
+            break;
+          case "scriptCode":
+            control.script = {
+              ...control.script,
+              code: value,
+            };
+            break;
         }
       }
-      this.#saveControls();
-    }
-    return control;
-  }
 
-  setScriptName(device, key, scriptName) {
-    const keyMap = this.#getKeyMap(device.name, device.manufacturer);
-    if (keyMap === null) {
-      return null;
-    }
-    const control = keyMap[key];
-    if (control && control.script) {
-      control.script.name = scriptName.trim();
+      if (control.name === null) {
+        delete control.name;
+      }
+
+      if (control.script && control.script.code === null) {
+        delete control.script;
+      }
+
       this.#saveControls();
     }
-    return control;
+
+    // 更新後の情報を返す
+    return this.getKeyInfo(device, messageType, key);
   }
 
   reset() {
@@ -337,6 +360,13 @@ class MIDIScriptManager {
         this.#targetOrigin
       );
     }
+  }
+
+  #getNoteName(noteNumber) {
+    const octave = Math.floor(noteNumber / 12) - 1;
+    const noteIndex = noteNumber % 12;
+    const noteName = MIDIScriptManager.noteNames[noteIndex];
+    return `${noteName}${octave}`;
   }
 }
 

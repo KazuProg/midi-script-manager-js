@@ -3,14 +3,16 @@
 let deviceDetail = {};
 let selectedKey = 0;
 let currentDevice = null;
+let currentMessageType = MIDIMessageType.ControlChange;
 
 let midi;
 
 window.addEventListener("load", async () => {
   midi = new MIDIScriptManager({
-    onMessage: (device, status, channel, data1, data2) => {
+    onMessage: (device, messageType, channel, data1, data2) => {
+      currentMessageType = messageType;
       showDevice(device);
-      showDetails(status, channel, data1, data2);
+      showDetails(messageType, channel, data1, data2);
     },
     onDeviceChange: (device) => {
       showDevice(device);
@@ -45,6 +47,7 @@ window.addEventListener("load", async () => {
     .addEventListener("input", (e) => {
       const detail = midi.setKeyName(
         currentDevice,
+        currentMessageType,
         selectedKey,
         e.target.value
       );
@@ -55,6 +58,7 @@ window.addEventListener("load", async () => {
     .addEventListener("input", (e) => {
       const detail = midi.setScriptName(
         currentDevice,
+        currentMessageType,
         selectedKey,
         e.target.value
       );
@@ -63,16 +67,21 @@ window.addEventListener("load", async () => {
   document
     .querySelector("#detail textarea[data-field=script]")
     .addEventListener("input", (e) => {
-      const detail = midi.setScript(currentDevice, selectedKey, e.target.value);
+      const detail = midi.setScript(
+        currentDevice,
+        currentMessageType,
+        selectedKey,
+        e.target.value
+      );
       updateDetail(detail);
     });
 
   function updateDetail(detail) {
     const keyBtn = document.querySelectorAll("#keymap > button")[selectedKey];
-    keyBtn.querySelector(".keyname").innerText = detail.name;
+    keyBtn.querySelector(".keyname").innerText = detail.keyName;
     keyBtn.querySelector(".confname").innerText = "----";
     if (detail.script) {
-      keyBtn.querySelector(".confname").innerText = detail.script.name;
+      keyBtn.querySelector(".confname").innerText = detail.scriptName;
       document.querySelector(
         "#detail [data-field=scriptName]"
       ).disabled = false;
@@ -92,7 +101,7 @@ function showDevice(device) {
   const keymapElem = document.querySelector("#keymap");
   keymapElem.innerHTML = "";
   for (let i = 0; i <= 0x7f; i++) {
-    const keyInfo = midi.getKeyInfo(currentDevice, i);
+    const keyInfo = midi.getKeyInfo(currentDevice, currentMessageType, i);
 
     let btn = document.createElement("button");
     btn.innerHTML =
@@ -120,7 +129,11 @@ function showDetails(status, channel, number, value = null) {
     .toString(16)
     .padStart(2, "0")}`;
 
-  const keyInfo = midi.getKeyInfo(currentDevice, selectedKey);
+  const keyInfo = midi.getKeyInfo(
+    currentDevice,
+    currentMessageType,
+    selectedKey
+  );
   deviceDetail.message(
     status != null ? `0x${hex(status)} (${getKeyByStatus(status)})` : ""
   );
