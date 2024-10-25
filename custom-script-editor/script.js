@@ -1,37 +1,104 @@
 "use strict";
 
-let deviceDetail = {};
-let selectedKey = 0;
 let currentDevice = null;
 let currentMessageType = MIDIMessageType.ControlChange;
 
 let midi;
 
+const UI = {
+  details: {},
+  keyMaps: [],
+  init() {
+    document.querySelectorAll("[data-field]").forEach((el) => {
+      const property = el.getAttribute("data-field");
+      const tagName = el.tagName.toLowerCase();
+      const isEditableElement = tagName === "input" || tagName === "textarea";
+      Object.defineProperty(this.details, property, {
+        set(value) {
+          if (isEditableElement) {
+            el.value = value;
+          } else {
+            el.innerText = value;
+          }
+        },
+        configurable: true,
+        enumerable: true,
+      });
+      if (isEditableElement) {
+        Object.defineProperty(this.details, `${property}Disabled`, {
+          set(value) {
+            el.disabled = value;
+          },
+          configurable: true,
+          enumerable: true,
+        });
+      }
+    });
+
+    //keyMapButtons
+    const keyMapsContainer = document.querySelector("#keymap");
+    for (let i = 0; i <= 0x7f; i++) {
+      let btn = document.createElement("button");
+      btn.innerHTML =
+        `<span class="key-name"></span>` +
+        `<hr />` +
+        `<span class="script-name"></span>`;
+      btn.disabled = true;
+      btn.onclick = (e) => {
+        if (!e.target.disabled) {
+          showDetails(null, null, i);
+        }
+      };
+      keyMapsContainer.appendChild(btn);
+      this.keyMaps.push({
+        _button: btn,
+        set keyName(value) {
+          btn.querySelector(".key-name").innerText = value;
+        },
+        set scriptName(value) {
+          btn.querySelector(".script-name").innerText = value;
+        },
+        set disabled(value) {
+          btn.disabled = value;
+        },
+      });
+    }
+
+    this.keyMap.selectedKey = 0;
+  },
+  keyMap: {
+    _selectedKey: 0,
+    get selectedKey() {
+      return this._selectedKey;
+    },
+    set selectedKey(value) {
+      UI.keyMaps[this._selectedKey]._button.classList.remove("selected");
+      UI.keyMaps[value]._button.classList.add("selected");
+      this._selectedKey = value;
+    },
+    set selectedValue(value) {
+      const target = UI.keyMaps[this._selectedKey]._button;
+      target.style.background = `#ff8800${(value * 2)
+        .toString(16)
+        .padStart(2, "0")}`;
+    },
+  },
+};
+
 window.addEventListener("load", async () => {
+  // 画面初期化
+  UI.init();
+
   midi = new MIDIScriptManager({
     onMessage: (device, messageType, channel, data1, data2) => {
       currentMessageType = messageType;
       showDevice(device);
+      UI.keyMaps[data1].disabled = false;
       showDetails(messageType, channel, data1, data2);
     },
     onDeviceChange: (device) => {
       showDevice(device);
     },
-  });
-
-  // デバイス情報表示を簡略化するオブジェクト作成
-  document.querySelectorAll("[data-field]").forEach((el) => {
-    const property = el.getAttribute("data-field");
-    deviceDetail[property] = (value) => {
-      if (
-        el.tagName.toLowerCase() === "input" ||
-        el.tagName.toLowerCase() === "textarea"
-      ) {
-        el.value = value;
-      } else {
-        el.innerText = value;
-      }
-    };
   });
 
   try {
@@ -48,7 +115,7 @@ window.addEventListener("load", async () => {
       const detail = midi.setKeyName(
         currentDevice,
         currentMessageType,
-        selectedKey,
+        UI.keyMap.selectedKey,
         e.target.value
       );
       updateDetail(detail);
@@ -59,7 +126,7 @@ window.addEventListener("load", async () => {
       const detail = midi.setScriptName(
         currentDevice,
         currentMessageType,
-        selectedKey,
+        UI.keyMap.selectedKey,
         e.target.value
       );
       updateDetail(detail);
@@ -70,24 +137,21 @@ window.addEventListener("load", async () => {
       const detail = midi.setScript(
         currentDevice,
         currentMessageType,
-        selectedKey,
+        UI.keyMap.selectedKey,
         e.target.value
       );
       updateDetail(detail);
     });
 
   function updateDetail(detail) {
-    const keyBtn = document.querySelectorAll("#keymap > button")[selectedKey];
-    keyBtn.querySelector(".keyname").innerText = detail.keyName;
-    keyBtn.querySelector(".confname").innerText = "----";
+    UI.keyMaps[UI.keyMap.selectedKey].keyName = detail.keyName;
+    UI.keyMaps[UI.keyMap.selectedKey].scriptName = "----";
     if (detail.script) {
-      keyBtn.querySelector(".confname").innerText = detail.scriptName;
-      document.querySelector(
-        "#detail [data-field=scriptName]"
-      ).disabled = false;
+      UI.keyMaps[UI.keyMap.selectedKey].scriptName = detail.scriptName;
+      UI.details.scriptNameDisabled = false;
     } else {
-      document.querySelector("#detail [data-field=scriptName]").value = "";
-      document.querySelector("#detail [data-field=scriptName]").disabled = true;
+      UI.details.scriptName = "";
+      UI.details.scriptNameDisabled = true;
     }
   }
 });
@@ -95,61 +159,41 @@ window.addEventListener("load", async () => {
 function showDevice(device) {
   currentDevice = device;
 
-  deviceDetail.device(device ? `${device.name} (${device.manufacturer})` : "");
+  UI.details.device = device ? `${device.name} (${device.manufacturer})` : "";
 
-  // KeyMap作成＆keys配列初期化
-  const keymapElem = document.querySelector("#keymap");
-  keymapElem.innerHTML = "";
   for (let i = 0; i <= 0x7f; i++) {
     const keyInfo = midi.getKeyInfo(currentDevice, currentMessageType, i);
-
-    let btn = document.createElement("button");
-    btn.innerHTML =
-      `<span class="keyname">${keyInfo.keyName}</span>` +
-      `<hr />` +
-      `<span class="confname">${keyInfo.scriptName || "----"}</span>`;
-    btn.disabled = !keyInfo.enabled;
-    btn.onclick = (e) => {
-      if (!e.target.disabled) {
-        showDetails(null, null, i);
-      }
-    };
-    keymapElem.appendChild(btn);
+    UI.keyMaps[i].disabled = !keyInfo.enabled;
+    UI.keyMaps[i].keyName = keyInfo.keyName;
+    UI.keyMaps[i].scriptName = keyInfo.scriptName || "----";
   }
 }
 
 function showDetails(status, channel, number, value = null) {
-  const keyBtns = document.querySelectorAll("#keymap > button");
-  keyBtns[selectedKey].classList.remove("active");
-  selectedKey = number;
-  keyBtns[selectedKey].disabled = false;
-  keyBtns[selectedKey].classList.add("active");
-
-  keyBtns[selectedKey].style.background = `#ff8800${(value * 2)
-    .toString(16)
-    .padStart(2, "0")}`;
+  UI.keyMap.selectedKey = number;
+  UI.keyMap.selectedValue = value;
 
   const keyInfo = midi.getKeyInfo(
     currentDevice,
     currentMessageType,
-    selectedKey
+    UI.keyMap.selectedKey
   );
-  deviceDetail.message(
-    status != null ? `0x${hex(status)} (${getKeyByStatus(status)})` : ""
-  );
-  deviceDetail.channel(channel != null ? "0x" + hex(channel) : "");
-  deviceDetail.data1(number != null ? "0x" + hex(number) : "");
-  deviceDetail.data2(value != null ? "0x" + hex(value) : "");
-  deviceDetail.keyName(keyInfo.keyName);
-  deviceDetail.script(keyInfo.script);
-  deviceDetail.scriptName(keyInfo.scriptName);
 
-  document.querySelector("#detail [data-field=keyName]").disabled = false;
-  document.querySelector("#detail [data-field=script]").disabled = false;
+  UI.details.message =
+    status != null ? `0x${hex(status)} (${getKeyByStatus(status)})` : "";
+  UI.details.channel = channel != null ? "0x" + hex(channel) : "";
+  UI.details.data1 = number != null ? "0x" + hex(number) : "";
+  UI.details.data2 = value != null ? "0x" + hex(value) : "";
+  UI.details.keyName = keyInfo.keyName;
+  UI.details.script = keyInfo.script;
+  UI.details.scriptName = keyInfo.scriptName;
+
+  UI.details.keyNameDisabled = false;
+  UI.details.scriptDisabled = false;
   if (keyInfo.script) {
-    document.querySelector("#detail [data-field=scriptName]").disabled = false;
+    UI.details.scriptNameDisabled = false;
   } else {
-    document.querySelector("#detail [data-field=scriptName]").disabled = true;
+    UI.details.scriptNameDisabled = true;
   }
 }
 

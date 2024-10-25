@@ -60,7 +60,7 @@ body > * {
   border-radius: 3px;
 }
 
-#keymap button.active {
+#keymap button.selected {
   border: solid 3px #ff9900;
 }
 
