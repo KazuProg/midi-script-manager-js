@@ -63,7 +63,19 @@ const Page = {
   },
   set messageType(value) {
     this._messageType = value;
-    //表示処理
+    switch (this._messageType) {
+      case MIDIMessageType.NoteOff:
+      case MIDIMessageType.NoteOn:
+        document.querySelector("#keymap-title").innerText = "NoteOn/Off";
+        break;
+      case MIDIMessageType.ControlChange:
+        document.querySelector("#keymap-title").innerText = "ControlChange";
+        break;
+    }
+    for (let i = 0; i <= 0x7f; i++) {
+      const keyInfo = midi.getKeyInfo(this.device, this.messageType, i);
+      Page._updateButton(keyInfo);
+    }
   },
   set selectedKey(value) {
     if (this._selectedKey === value) return;

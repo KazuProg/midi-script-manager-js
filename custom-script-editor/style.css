@@ -46,6 +46,10 @@ body > * {
   margin-top: 0.5rem;
 }
 
+#keymap-title {
+  margin: 0;
+}
+
 #keymap {
   display: grid;
   grid-template-columns: repeat(16, 1fr);
