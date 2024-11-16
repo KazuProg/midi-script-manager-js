@@ -22,7 +22,7 @@ const PageElements = {
       btn.disabled = true;
       btn.onclick = (e) => {
         if (!e.target.disabled) {
-          Page.selectedKey = i;
+          Page.selectedMIDIElement = Page.device.getKeyMap(Page.messageType)[i];
         }
       };
       keyMapsContainer.appendChild(btn);
@@ -32,33 +32,29 @@ const PageElements = {
 };
 
 const Page = {
-  _device: { name: null, manufacturer: null },
+  _device: null,
   _messageType: MIDIMessageType.ControlChange,
-  _selectedKey: null,
+  _selectedMIDIElement: null,
   get device() {
     return this._device;
   },
   get messageType() {
     return this._messageType;
   },
-  get selectedKey() {
-    return this._selectedKey;
+  get selectedMIDIElement() {
+    return this._selectedMIDIElement;
   },
-  set device(value) {
-    if (
-      this._device.name === value.name &&
-      this._device.manufacturer === value.manufacturer
-    ) {
+  set device(device) {
+    if (this._device === device) {
       return;
     }
 
-    this._device = value;
+    this._device = device;
 
-    PageElements.detail.device.innerText = `${this.device.name} (${this.device.manufacturer})`;
-
+    PageElements.detail.device.innerText = `[${device.manufacturer}] ${device.name}`;
+    const keyMap = device.getKeyMap(this.messageType);
     for (let i = 0; i <= 0x7f; i++) {
-      const keyInfo = midi.getKeyInfo(this.device, this.messageType, i);
-      Page._updateButton(keyInfo);
+      Page._updateButton(keyMap[i]);
     }
   },
   set messageType(value) {
@@ -72,57 +68,58 @@ const Page = {
         document.querySelector("#keymap-title").innerText = "ControlChange";
         break;
     }
+
+    const keyMap = this._device.getKeyMap(this.messageType);
     for (let i = 0; i <= 0x7f; i++) {
-      const keyInfo = midi.getKeyInfo(this.device, this.messageType, i);
-      Page._updateButton(keyInfo);
+      Page._updateButton(keyMap[i]);
     }
   },
-  set selectedKey(value) {
-    if (this._selectedKey === value) return;
-    if (Page.selectedKey !== null) {
-      PageElements.keyMap[Page.selectedKey].classList.remove("selected");
+  set selectedMIDIElement(midiElement) {
+    if (this._selectedMIDIElement === midiElement) return;
+    if (Page.selectedMIDIElement !== null) {
+      PageElements.keyMap[Page.selectedMIDIElement.midiNumber].classList.remove(
+        "selected"
+      );
     }
-    this._selectedKey = value;
+    this._selectedMIDIElement = midiElement;
 
     const detailElem = PageElements.detail;
     detailElem.message.innerText = "";
     detailElem.channel.innerText = "";
     detailElem.data2.innerText = "";
 
-    const keyInfo = midi.getKeyInfo(
-      Page.device,
-      Page.messageType,
-      Page.selectedKey
-    );
-    Page.updateDetail(keyInfo);
+    Page.updateDetail(midiElement);
   },
-  updateDetail(keyInfo) {
+  updateDetail(midiElement) {
     const detailElem = PageElements.detail;
-    detailElem.data1.innerText = "0x" + hex(Page.selectedKey);
-    detailElem.keyName.value = keyInfo.keyName;
-    detailElem.scriptName.value = keyInfo.scriptName || "";
-    detailElem.script.value = keyInfo.script || "";
+    detailElem.data1.innerText =
+      "0x" + hex(Page.selectedMIDIElement.midiNumber);
+    detailElem.keyName.value = midiElement.name;
+    detailElem.scriptName.value = midiElement.scriptName || "";
+    detailElem.script.value = midiElement.scriptCode || "";
 
     detailElem.keyName.disabled = false;
-    detailElem.scriptName.disabled = !keyInfo.script; //TODO
+    detailElem.scriptName.disabled = midiElement.scriptCode === null;
     detailElem.script.disabled = false;
 
-    Page._updateButton(keyInfo);
-    const btn = PageElements.keyMap[Page.selectedKey];
+    Page._updateButton(midiElement);
+    const btn = PageElements.keyMap[Page.selectedMIDIElement.midiNumber];
     btn.classList.add("selected");
   },
-  _updateButton(detail) {
-    const btn = PageElements.keyMap[detail.key];
-    btn.disabled = !detail.enabled;
-    btn.querySelector(".key-name").innerText = detail.keyName;
+  _updateButton(midiElement) {
+    const btn = PageElements.keyMap[midiElement.midiNumber];
+    btn.disabled = !midiElement.isAvailable;
+    btn.querySelector(".key-name").innerText = midiElement.name;
 
     btn.querySelector(".script-name").innerText =
-      detail.script === null ? "----" : detail.scriptName || "\u00A0";
+      midiElement.scriptCode === null
+        ? "----"
+        : midiElement.scriptName || "\u00A0";
   },
-  showMessageDetail(status, channel, data1, data2) {
-    Page.selectedKey = data1;
+  showMessageDetail(midiElement, status, channel, data1, data2) {
+    Page.selectedMIDIElement = midiElement;
 
-    const btn = PageElements.keyMap[Page.selectedKey];
+    const btn = PageElements.keyMap[Page.selectedMIDIElement.midiNumber];
     btn.disabled = false;
     btn.style.background = `#ff8800${hex(data2 * 2)}`;
 
@@ -139,10 +136,16 @@ window.addEventListener("load", async () => {
   PageElements.init();
 
   midi = new MIDIScriptManager({
-    onMessage: (device, messageType, channel, data1, data2) => {
-      Page.device = device;
-      Page.messageType = messageType;
-      Page.showMessageDetail(messageType, channel, data1, data2);
+    onMessage: (midiElement, midiData) => {
+      Page.device = midiElement.device;
+      Page.messageType = midiData.messageType;
+      Page.showMessageDetail(
+        midiElement,
+        midiData.messageType,
+        midiData.channel,
+        midiData.data1,
+        midiData.data2
+      );
     },
     onDeviceChange: (device) => {
       Page.device = device;
@@ -160,35 +163,20 @@ window.addEventListener("load", async () => {
   document
     .querySelector("#detail input[data-field=keyName]")
     .addEventListener("input", (e) => {
-      const detail = midi.setKeyName(
-        Page.device,
-        Page.messageType,
-        Page.selectedKey,
-        e.target.value
-      );
-      Page.updateDetail(detail);
+      Page.selectedMIDIElement.name = e.target.value;
+      Page.updateDetail(Page.selectedMIDIElement);
     });
   document
     .querySelector("#detail input[data-field=scriptName]")
     .addEventListener("input", (e) => {
-      const detail = midi.setScriptName(
-        Page.device,
-        Page.messageType,
-        Page.selectedKey,
-        e.target.value
-      );
-      Page.updateDetail(detail);
+      Page.selectedMIDIElement.scriptname = e.target.value;
+      Page.updateDetail(Page.selectedMIDIElement);
     });
   document
     .querySelector("#detail textarea[data-field=script]")
     .addEventListener("input", (e) => {
-      const detail = midi.setScript(
-        Page.device,
-        Page.messageType,
-        Page.selectedKey,
-        e.target.value
-      );
-      Page.updateDetail(detail);
+      Page.selectedMIDIElement.scriptCode = e.target.value;
+      Page.updateDetail(Page.selectedMIDIElement);
     });
 });
 
