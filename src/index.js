@@ -1,13 +1,8 @@
-"use strict";
-
-const MIDIMessageType = {
-  NoteOff: 0x80,
-  NoteOn: 0x90,
-  ControlChange: 0xb0,
-};
+import MIDIDevice from "./MIDIDevice.js";
+import MIDIMessageTypes from "./MIDIMessageTypes.js";
 
 class MIDIScriptManager {
-  static MessageTypes = MIDIMessageType;
+  static MessageTypes = MIDIMessageTypes;
   static scriptOrigin;
   #options = {};
   #midiDevices = null;
@@ -140,7 +135,7 @@ class MIDIScriptManager {
 
     MIDIInput.onmidimessage = this.#onMIDIMessage.bind(this);
 
-    let device = new _MIDIDevice(
+    let device = new MIDIDevice(
       MIDIInput.name,
       MIDIInput.manufacturer,
       this.#saveControls.bind(this)
@@ -219,7 +214,7 @@ class MIDIScriptManager {
     this.#midiDevices = [];
     for (const val of obj) {
       this.#midiDevices.push(
-        new _MIDIDevice(
+        new MIDIDevice(
           val.device.name,
           val.device.manufacturer,
           this.#saveControls.bind(this),
@@ -245,254 +240,6 @@ class MIDIScriptManager {
         this.#targetOrigin
       );
     }
-  }
-}
-
-class _MIDIDevice {
-  #name;
-  #manufacturer;
-  #noteKeyMap;
-  #ccKeyMap;
-  #saveCallback;
-
-  constructor(name, manufacturer, saveCallback, keymaps = null) {
-    this.#name = name;
-    this.#manufacturer = manufacturer;
-    this.#saveCallback = saveCallback;
-
-    this.#noteKeyMap = Array.from(
-      { length: 0x80 },
-      (_, index) =>
-        new _MIDIElement(
-          this,
-          MIDIMessageType.NoteOn,
-          index,
-          this.#saveCallback
-        )
-    );
-    this.#ccKeyMap = Array.from(
-      { length: 0x80 },
-      (_, index) =>
-        new _MIDIElement(
-          this,
-          MIDIMessageType.ControlChange,
-          index,
-          this.#saveCallback
-        )
-    );
-
-    if (keymaps) {
-      for (const idx in keymaps.note) {
-        if (keymaps.note[idx]) {
-          this.#noteKeyMap[idx] = new _MIDIElement(
-            this,
-            MIDIMessageType.NoteOn,
-            idx,
-            this.#saveCallback,
-            keymaps.note[idx]
-          );
-        }
-      }
-      for (const idx in keymaps.cc) {
-        if (keymaps.cc[idx]) {
-          this.#ccKeyMap[idx] = new _MIDIElement(
-            this,
-            MIDIMessageType.ControlChange,
-            idx,
-            this.#saveCallback,
-            keymaps.cc[idx]
-          );
-        }
-      }
-    }
-  }
-
-  get name() {
-    return this.#name;
-  }
-
-  get manufacturer() {
-    return this.#manufacturer;
-  }
-
-  get noteKeyMap() {
-    return this.#noteKeyMap;
-  }
-
-  get ccKeyMap() {
-    return this.#ccKeyMap;
-  }
-
-  getKeyMap(midiMessageType) {
-    switch (midiMessageType) {
-      case MIDIMessageType.NoteOff:
-      case MIDIMessageType.NoteOn:
-        return this.#noteKeyMap;
-      case MIDIMessageType.ControlChange:
-        return this.#ccKeyMap;
-    }
-    return null;
-  }
-
-  toJSON() {
-    return {
-      device: {
-        name: this.#name,
-        manufacturer: this.#manufacturer,
-      },
-      keymap: {
-        note: this.#noteKeyMap,
-        cc: this.#ccKeyMap,
-      },
-    };
-  }
-}
-
-class _MIDIElement {
-  #device;
-  #messageType;
-  #midiNumber;
-  #isAvailable = false;
-  #name = null;
-  #scriptName = null;
-  #scriptCode = null;
-  #saveCallback;
-
-  constructor(device, messageType, midiNumber, saveCallback, data = null) {
-    this.#device = device;
-    this.#messageType = messageType;
-    this.#midiNumber = midiNumber;
-
-    if (data) {
-      this.#isAvailable = true;
-      this.#name = data?.name || null;
-      this.#scriptName = data?.script?.name || null;
-      this.#scriptCode = data?.script?.code || null;
-    }
-    this.#saveCallback = saveCallback;
-  }
-
-  get device() {
-    return this.#device;
-  }
-
-  get midiNumber() {
-    return this.#midiNumber;
-  }
-
-  get isAvailable() {
-    return this.#isAvailable;
-  }
-
-  get name() {
-    return this.#name !== null ? this.#name : this.#getDefaultName();
-  }
-
-  get isDefaultName() {
-    return this.#name === null;
-  }
-
-  get scriptName() {
-    return this.#scriptName;
-  }
-
-  get scriptCode() {
-    return this.#scriptCode;
-  }
-
-  set name(value) {
-    value = value.trim();
-    if (value === "") {
-      value = null;
-    }
-    this.#name = value;
-    this.#saveCallback();
-  }
-
-  set scriptName(value) {
-    value = value.trim();
-    if (value === "") {
-      value = null;
-    }
-    this.#scriptName = value;
-    this.#saveCallback();
-  }
-
-  set scriptCode(value) {
-    value = value.trim();
-    if (value === "") {
-      this.#scriptName = null;
-      this.#scriptCode = null;
-    } else {
-      this.#scriptCode = value.trim();
-    }
-    this.#saveCallback();
-  }
-
-  setAvailable() {
-    this.#isAvailable = true;
-    this.#saveCallback();
-  }
-
-  executeScript(argumentObject = {}) {
-    if (this.#scriptCode) {
-      try {
-        const scriptFunction = new Function(
-          ...Object.keys(argumentObject),
-          this.#scriptCode
-        );
-        scriptFunction(...Object.values(argumentObject));
-      } catch (error) {
-        console.error(
-          "An error occurred while executing the custom script:",
-          error
-        );
-      }
-    }
-  }
-
-  toJSON() {
-    if (this.#isAvailable) {
-      const result = {};
-      if (this.#name) {
-        result.name = this.#name;
-        if (this.#scriptCode) {
-          result.script = {
-            name: this.#scriptName,
-            code: this.#scriptCode,
-          };
-        }
-      }
-      return result;
-    } else {
-      return null;
-    }
-  }
-
-  #getDefaultName() {
-    let name;
-    switch (this.#messageType) {
-      case MIDIMessageType.NoteOff:
-      case MIDIMessageType.NoteOn:
-        name = this.#getNoteName(this.#midiNumber);
-        break;
-      case MIDIMessageType.ControlChange:
-        const hex = this.#midiNumber
-          .toString(16)
-          .toUpperCase()
-          .padStart(2, "0");
-        name = `0x${hex}`;
-        break;
-    }
-    return name;
-  }
-
-  #getNoteName(noteNumber) {
-    const noteNames = "C|C#|D|D#|E|F|F#|G|G#|A|A#|B".split("|");
-    const octave = Math.floor(noteNumber / 12) - 1;
-    const noteIndex = noteNumber % 12;
-    const noteName = noteNames[noteIndex];
-    return `${noteName}${octave}`;
   }
 }
 

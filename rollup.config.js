@@ -3,7 +3,7 @@ import { terser } from "rollup-plugin-terser";
 const isProduction = process.env.NODE_ENV === "production";
 
 export default {
-  input: "src/midi-script-manager.js",
+  input: "src/index.js",
   output: [
     {
       file: "docs/midi-script-manager.js",
