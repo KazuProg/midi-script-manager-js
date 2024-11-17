@@ -1,5 +1,6 @@
 "use strict";
 
+const MIDIMessageType = MIDIScriptManager.MessageTypes;
 let midi;
 
 const PageElements = {

@@ -1,0 +1,17 @@
+{
+  "name": "midi-script-manager",
+  "version": "0.1.0",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "cross-env NODE_ENV=development rollup -c --watch",
+    "build": "cross-env NODE_ENV=production rollup -c"
+  },
+  "author": "KazuProg",
+  "license": "MIT",
+  "description": "A library that enables custom scripts to be executed via MIDI device operations, making it easy to integrate MIDI control into web applications.",
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "rollup": "^2.79.2",
+    "rollup-plugin-terser": "^7.0.2"
+  }
+}

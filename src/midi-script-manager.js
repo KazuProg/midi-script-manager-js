@@ -7,6 +7,7 @@ const MIDIMessageType = {
 };
 
 class MIDIScriptManager {
+  static MessageTypes = MIDIMessageType;
   static scriptOrigin;
   #options = {};
   #midiDevices = null;
@@ -502,3 +503,5 @@ if (document.currentScript && document.currentScript.src) {
 } else {
   MIDIScriptManager.scriptOrigin = "https://kazuprog.github.io";
 }
+
+export default MIDIScriptManager;
