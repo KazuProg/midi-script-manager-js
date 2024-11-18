@@ -25,7 +25,6 @@ class MIDIScriptManager {
         if (event.origin !== this.#targetOrigin) return;
         if (event.data.sender && event.data.sender === "MIDIScriptManager") {
           window.removeEventListener("message", listener);
-          console.log(event.data.data);
           this.#loadFromObject(event.data.data);
           this.#options.onDeviceChange(this.#midiDevices[0]);
         }
