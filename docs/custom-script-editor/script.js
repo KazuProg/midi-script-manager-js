@@ -170,7 +170,7 @@ window.addEventListener("load", async () => {
   document
     .querySelector("#detail input[data-field=scriptName]")
     .addEventListener("input", (e) => {
-      Page.selectedMIDIElement.scriptname = e.target.value;
+      Page.selectedMIDIElement.scriptName = e.target.value;
       Page.updateDetail(Page.selectedMIDIElement);
     });
   document
