@@ -16,14 +16,19 @@ class MIDIDevice {
     this.#noteKeyMap = Array.from(
       { length: 0x80 },
       (_, index) =>
-        new MIDIElement(this, MIDIMessageType.NoteOn, index, this.#saveCallback)
+        new MIDIElement(
+          this,
+          MIDIMessageTypes.NoteOn,
+          index,
+          this.#saveCallback
+        )
     );
     this.#ccKeyMap = Array.from(
       { length: 0x80 },
       (_, index) =>
         new MIDIElement(
           this,
-          MIDIMessageType.ControlChange,
+          MIDIMessageTypes.ControlChange,
           index,
           this.#saveCallback
         )
@@ -34,7 +39,7 @@ class MIDIDevice {
         if (keymaps.note[idx]) {
           this.#noteKeyMap[idx] = new MIDIElement(
             this,
-            MIDIMessageType.NoteOn,
+            MIDIMessageTypes.NoteOn,
             idx,
             this.#saveCallback,
             keymaps.note[idx]
@@ -45,7 +50,7 @@ class MIDIDevice {
         if (keymaps.cc[idx]) {
           this.#ccKeyMap[idx] = new MIDIElement(
             this,
-            MIDIMessageType.ControlChange,
+            MIDIMessageTypes.ControlChange,
             idx,
             this.#saveCallback,
             keymaps.cc[idx]
