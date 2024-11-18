@@ -232,10 +232,11 @@ class MIDIScriptManager {
       );
     }
     if (window.opener && this.#targetOrigin) {
+      const data = JSON.parse(JSON.stringify(this.#midiDevices));
       window.opener.postMessage(
         {
           sender: "MIDIScriptManager",
-          data: this.#midiDevices,
+          data: data,
         },
         this.#targetOrigin
       );
