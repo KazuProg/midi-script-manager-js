@@ -5,7 +5,7 @@ class MIDIScriptManager {
   static MessageTypes = MIDIMessageTypes;
   static scriptOrigin;
   #options = {};
-  #midiDevices = null;
+  #midiDevices = [];
   #targetOrigin = null;
 
   constructor(options = {}) {
@@ -49,9 +49,11 @@ class MIDIScriptManager {
       this.#loadFromObject(
         JSON.parse(localStorage.getItem(this.#options.localStorageKey)) || []
       );
-    } else {
-      this.#midiDevices = [];
     }
+  }
+
+  get devices() {
+    return this.#midiDevices;
   }
 
   async requestAccess() {

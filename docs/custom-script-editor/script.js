@@ -45,6 +45,21 @@ const Page = {
   get selectedMIDIElement() {
     return this._selectedMIDIElement;
   },
+  set devices(devices) {
+    const deviceElem = PageElements.detail.device;
+    const options = Array.from(deviceElem.options);
+    for (const device of devices) {
+      const value = JSON.stringify([device.name, device.manufacturer]);
+      const exists = options.some((option) => option.value === value);
+
+      if (!exists) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.innerText = `[${device.manufacturer}] ${device.name}`;
+        deviceElem.appendChild(option);
+      }
+    }
+  },
   set device(device) {
     if (this._device === device) {
       return;
@@ -52,7 +67,9 @@ const Page = {
 
     this._device = device;
 
-    PageElements.detail.device.innerText = `[${device.manufacturer}] ${device.name}`;
+    const value = JSON.stringify([device.name, device.manufacturer]);
+
+    PageElements.detail.device.value = value;
     const keyMap = device.getKeyMap(this.messageType);
     for (let i = 0; i <= 0x7f; i++) {
       Page._updateButton(keyMap[i]);
@@ -149,9 +166,12 @@ window.addEventListener("load", async () => {
       );
     },
     onDeviceChange: (device) => {
+      Page.devices = midi.devices;
       Page.device = device;
     },
   });
+
+  Page.devices = midi.devices;
 
   try {
     await midi.requestAccess();
@@ -161,6 +181,12 @@ window.addEventListener("load", async () => {
   }
 
   // イベントリスナー登録
+  document
+    .querySelector("#detail select[data-field=device]")
+    .addEventListener("change", (e) => {
+      const [deviceName, deviceManufacturer] = JSON.parse(e.target.value);
+      Page.device = midi.findDevice(deviceName, deviceManufacturer);
+    });
   document
     .querySelector("#detail input[data-field=keyName]")
     .addEventListener("input", (e) => {

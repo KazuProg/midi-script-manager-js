@@ -80,6 +80,7 @@ body > * {
 }
 
 input,
+select,
 textarea {
   min-width: 5rem;
   width: 100%;
@@ -91,11 +92,13 @@ textarea {
 }
 
 input:focus,
+select:focus,
 textarea:focus {
   outline: none;
 }
 
-input {
+input,
+select {
   border-bottom: solid 2px #555;
 }
 
