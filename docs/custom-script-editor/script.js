@@ -45,31 +45,25 @@ const Page = {
   get selectedMIDIElement() {
     return this._selectedMIDIElement;
   },
-  set devices(devices) {
-    const deviceElem = PageElements.detail.device;
-    const options = Array.from(deviceElem.options);
-    for (const device of devices) {
-      const value = JSON.stringify([device.name, device.manufacturer]);
-      const exists = options.some((option) => option.value === value);
-
-      if (!exists) {
-        const option = document.createElement("option");
-        option.value = value;
-        option.innerText = `[${device.manufacturer}] ${device.name}`;
-        deviceElem.appendChild(option);
-      }
-    }
-  },
   set device(device) {
     if (this._device === device) {
       return;
     }
 
     this._device = device;
-
     const value = JSON.stringify([device.name, device.manufacturer]);
 
-    PageElements.detail.device.value = value;
+    const deviceElem = PageElements.detail.device;
+    const options = Array.from(deviceElem.options);
+    const exists = options.some((option) => option.value === value);
+    if (!exists) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.innerText = `[${device.manufacturer}] ${device.name}`;
+      deviceElem.appendChild(option);
+    }
+
+    deviceElem.value = value;
     const keyMap = device.getKeyMap(this.messageType);
     for (let i = 0; i <= 0x7f; i++) {
       Page._updateButton(keyMap[i]);
@@ -166,12 +160,16 @@ window.addEventListener("load", async () => {
       );
     },
     onDeviceChange: (device) => {
-      Page.devices = midi.devices;
       Page.device = device;
     },
   });
 
-  Page.devices = midi.devices;
+  const devices = midi.devices;
+  for (const device of devices) {
+    Page.device = device;
+  }
+  // Select the first one
+  if (devices.length !== 0) Page.device = devices[0];
 
   try {
     await midi.requestAccess();
