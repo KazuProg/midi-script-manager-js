@@ -2,25 +2,22 @@ import MIDIMessageTypes from "./MIDIMessageTypes";
 
 class MIDIElement {
   #device;
-  #messageType;
+  #midiStatus;
   #midiNumber;
-  #isAvailable = false;
   #name = null;
   #scriptName = null;
   #scriptCode = null;
   #saveCallback;
 
-  constructor(device, messageType, midiNumber, saveCallback, data = null) {
+  constructor(device, midiStatus, midiNumber, saveCallback, data = {}) {
     this.#device = device;
-    this.#messageType = messageType;
+    this.#midiStatus = midiStatus;
     this.#midiNumber = midiNumber;
 
-    if (data) {
-      this.#isAvailable = true;
-      this.#name = data?.name || null;
-      this.#scriptName = data?.script?.name || null;
-      this.#scriptCode = data?.script?.code || null;
-    }
+    this.#name = data?.name || null;
+    this.#scriptName = data?.script?.name || null;
+    this.#scriptCode = data?.script?.code || null;
+
     this.#saveCallback = saveCallback;
   }
 
@@ -28,16 +25,38 @@ class MIDIElement {
     return this.#device;
   }
 
-  get midiNumber() {
+  get messageType() {
+    return this.#midiStatus & 0xf0;
+  }
+
+  get channel() {
+    return this.#midiStatus & 0x0f;
+  }
+
+  get number() {
     return this.#midiNumber;
   }
 
-  get isAvailable() {
-    return this.#isAvailable;
+  get defaultName() {
+    let name;
+    switch (this.messageType) {
+      case MIDIMessageTypes.NoteOff:
+      case MIDIMessageTypes.NoteOn:
+        name = this.#getNoteName(this.#midiNumber);
+        break;
+      case MIDIMessageTypes.ControlChange:
+        const hex = this.#midiNumber
+          .toString(16)
+          .toUpperCase()
+          .padStart(2, "0");
+        name = `0x${hex}`;
+        break;
+    }
+    return name;
   }
 
   get name() {
-    return this.#name !== null ? this.#name : this.#getDefaultName();
+    return this.#name !== null ? this.#name : this.defaultName;
   }
 
   get isDefaultName() {
@@ -45,7 +64,10 @@ class MIDIElement {
   }
 
   get scriptName() {
-    return this.#scriptName;
+    if (this.scriptCode) {
+      return this.#scriptName || "No Name";
+    }
+    return null;
   }
 
   get scriptCode() {
@@ -81,11 +103,6 @@ class MIDIElement {
     this.#saveCallback();
   }
 
-  setAvailable() {
-    this.#isAvailable = true;
-    this.#saveCallback();
-  }
-
   executeScript(argumentObject = {}) {
     if (this.#scriptCode) {
       try {
@@ -103,40 +120,22 @@ class MIDIElement {
     }
   }
 
-  toJSON() {
-    if (this.#isAvailable) {
-      const result = {};
-      if (this.#name) {
-        result.name = this.#name;
-        if (this.#scriptCode) {
-          result.script = {
-            name: this.#scriptName,
-            code: this.#scriptCode,
-          };
-        }
-      }
-      return result;
-    } else {
-      return null;
-    }
+  get midiID() {
+    return ((this.#midiStatus << 8) + this.#midiNumber).toString(16);
   }
 
-  #getDefaultName() {
-    let name;
-    switch (this.#messageType) {
-      case MIDIMessageTypes.NoteOff:
-      case MIDIMessageTypes.NoteOn:
-        name = this.#getNoteName(this.#midiNumber);
-        break;
-      case MIDIMessageTypes.ControlChange:
-        const hex = this.#midiNumber
-          .toString(16)
-          .toUpperCase()
-          .padStart(2, "0");
-        name = `0x${hex}`;
-        break;
+  toJSON() {
+    const result = {
+      midi: this.midiID,
+      name: this.name,
+    };
+    if (this.#scriptCode) {
+      result.script = {
+        name: this.#scriptName,
+        code: this.#scriptCode,
+      };
     }
-    return name;
+    return result;
   }
 
   #getNoteName(noteNumber) {

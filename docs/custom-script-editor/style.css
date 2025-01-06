@@ -1,8 +1,17 @@
+:root {
+  --color-background: #333;
+  --color-background2: #555;
+  --color-input: #222;
+  --color-accent: #f80;
+  --color-font: #fff;
+  --color-overlay: #0008;
+}
+
 body {
-  background: #333;
-  color: white;
+  background: var(--color-background);
+  color: var(--color-font);
   margin: 0;
-  height: 100vh; /* 画面の高さに対応 */
+  height: 100vh;
   overflow: hidden;
 }
 
@@ -10,73 +19,92 @@ body > * {
   padding: 0.5rem;
 }
 
-#detail {
-  align-items: flex-start;
-  gap: 10vw;
+#device-name {
+  text-align: center;
 }
 
-#detail > :nth-child(1) {
-  display: grid;
-  grid-template-columns: auto auto;
-  gap: 3px;
-}
-
-#detail > :nth-child(1) > :nth-child(odd) {
-  width: 5rem;
+#keymap-table {
+  flex: 1;
+  white-space: nowrap;
+  overflow-y: scroll;
   position: relative;
+  padding: 0;
+  border: solid 1px var(--color-background2);
 }
 
-#detail > :nth-child(1) > :nth-child(odd)::after {
-  content: "：";
+#keymap-table table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow-x: hidden; /* 垂直方向にスクロール */
+  overflow-y: auto; /* 垂直方向にスクロール */
+  padding: 0;
+}
+
+#keymap-table thead {
+  background: var(--color-input);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+#keymap-table tbody tr:nth-child(odd) {
+  background-color: #fff1;
+}
+
+#keymap-table tbody tr:hover {
+  background-color: #fff3;
+}
+
+#keymap-table th,
+#keymap-table td {
+  white-space: nowrap;
+  padding: 0.2rem 0.5rem;
+  border-right: solid 1px var(--color-background2);
+}
+
+#keymap-table td:nth-child(1) {
+  width: 8rem;
+}
+
+#script-editor {
+  position: fixed;
+  inset: 0;
+  background: var(--color-overlay);
+  display: grid;
+  place-items: center;
+  z-index: 9;
+}
+
+#script-editor .container {
   position: absolute;
-  right: 0;
+  background: var(--color-background);
+  padding: 1rem;
+  border-radius: 1rem;
+  box-shadow: 0 0 1rem #0008;
+  max-width: calc(100vw - 4em);
+  max-height: calc(100vh - 4em);
+  width: 24rem;
+  height: 300px;
+  gap: 1rem;
 }
 
-#detail > :nth-child(1) input[data-field="keyName"] {
-  margin-left: 1rem;
-}
-
-#detail > :nth-child(2) {
-  flex-grow: 1;
-}
-
-#detail > :nth-child(2) textarea {
-  flex-grow: 1;
-  min-height: 3rem;
-  margin-top: 0.5rem;
-}
-
-#keymap-title {
+#script-editor .container h2 {
   margin: 0;
 }
-
-#keymap {
+#script-editor .container .element-details {
   display: grid;
-  grid-template-columns: repeat(16, 1fr);
-  gap: 5px;
-  overflow: auto;
+  grid-template-columns: auto auto 1fr;
+  gap: 8px 0;
 }
 
-#keymap button {
-  color: white;
-  background: #333;
-  border: solid 3px #555;
-  border-radius: 3px;
+#script-editor .container textarea {
+  width: 100%;
+  resize: none;
+  flex: 1;
 }
 
-#keymap button.selected {
-  border: solid 3px #ff9900;
-}
-
-#keymap button[disabled] {
-  color: #555;
-  background: #333;
-}
-
-#keymap hr {
-  border: none;
-  margin: 5px 0;
-  margin-top: 0;
+#script-editor input:focus {
+  border-color: #f70;
 }
 
 input,
@@ -102,6 +130,25 @@ select {
   border-bottom: solid 2px #555;
 }
 
+input:focus,
+select:focus {
+  border-bottom: solid 2px var(--color-accent);
+}
+
+.buttons {
+  text-align: right;
+}
+
+.buttons button {
+  padding: 0.5rem 1rem;
+  background: #222;
+  color: #fff;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  margin-left: 0.5rem;
+}
+
 .flex-row {
   display: flex;
   flex-direction: row;
@@ -110,4 +157,21 @@ select {
 .flex-col {
   display: flex;
   flex-direction: column;
+}
+
+.highlight {
+  animation: flash 0.3s ease-out;
+}
+
+@keyframes flash {
+  0% {
+    background-color: #fff5;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.hidden {
+  display: none !important;
 }

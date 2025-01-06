@@ -2,102 +2,160 @@ import MIDIElement from "./MIDIElement";
 import MIDIMessageTypes from "./MIDIMessageTypes";
 
 class MIDIDevice {
-  #name;
-  #manufacturer;
-  #noteKeyMap;
-  #ccKeyMap;
+  #input;
   #saveCallback;
+  #noteElements = [];
+  #ccElements = [];
+  #options = {};
 
-  constructor(name, manufacturer, saveCallback, keymaps = null) {
-    this.#name = name;
-    this.#manufacturer = manufacturer;
+  constructor(MIDIInput, saveCallback, options = {}) {
+    this.#input = MIDIInput;
+    this.#input.onmidimessage = this.#onMIDIMessage.bind(this);
+
     this.#saveCallback = saveCallback;
 
-    this.#noteKeyMap = Array.from(
-      { length: 0x80 },
-      (_, index) =>
-        new MIDIElement(
-          this,
-          MIDIMessageTypes.NoteOn,
-          index,
-          this.#saveCallback
-        )
-    );
-    this.#ccKeyMap = Array.from(
-      { length: 0x80 },
-      (_, index) =>
-        new MIDIElement(
-          this,
-          MIDIMessageTypes.ControlChange,
-          index,
-          this.#saveCallback
-        )
-    );
+    this.#options = {
+      executeScript: false,
+      onMessage: null,
+      data: null,
+      ...options,
+    };
+    if (this.#options.data) {
+      this.applyMappings(this.#options.data.mappings);
+    }
+  }
 
-    if (keymaps) {
-      for (const idx in keymaps.note) {
-        if (keymaps.note[idx]) {
-          this.#noteKeyMap[idx] = new MIDIElement(
-            this,
-            MIDIMessageTypes.NoteOn,
-            idx,
-            this.#saveCallback,
-            keymaps.note[idx]
-          );
+  applyMappings(mappings) {
+    if (!mappings) {
+      return;
+    }
+    for (const mapping of mappings) {
+      const midiData = parseInt(mapping.midi, 16);
+      const element = new MIDIElement(
+        this,
+        (midiData & 0xff00) >> 8,
+        midiData & 0x00ff,
+        this.#save.bind(this),
+        mapping
+      );
+      if (
+        element.messageType === MIDIMessageTypes.NoteOn ||
+        element.messageType === MIDIMessageTypes.NoteOff
+      ) {
+        if (!this.#noteElements[element.channel]) {
+          this.#noteElements[element.channel] = [];
         }
-      }
-      for (const idx in keymaps.cc) {
-        if (keymaps.cc[idx]) {
-          this.#ccKeyMap[idx] = new MIDIElement(
-            this,
-            MIDIMessageTypes.ControlChange,
-            idx,
-            this.#saveCallback,
-            keymaps.cc[idx]
-          );
+        this.#noteElements[element.channel][element.number] = element;
+      } else if (element.messageType === MIDIMessageTypes.ControlChange) {
+        if (!this.#ccElements[element.channel]) {
+          this.#ccElements[element.channel] = [];
         }
+        this.#ccElements[element.channel][element.number] = element;
       }
     }
   }
 
   get name() {
-    return this.#name;
+    return this.#input.name;
   }
 
   get manufacturer() {
-    return this.#manufacturer;
+    return this.#input.manufacturer;
   }
 
-  get noteKeyMap() {
-    return this.#noteKeyMap;
+  get noteElements() {
+    return this.#noteElements;
   }
 
-  get ccKeyMap() {
-    return this.#ccKeyMap;
+  get ccElements() {
+    return this.#ccElements;
   }
 
-  getKeyMap(midiMessageType) {
-    switch (midiMessageType) {
-      case MIDIMessageTypes.NoteOff:
+  get elements() {
+    return [...this.#noteElements.flat(), ...this.#ccElements.flat()];
+  }
+
+  findElementById(id) {
+    return this.elements.find((elem) => elem.midiID === id);
+  }
+
+  #onMIDIMessage(midiMessage) {
+    const [status, data1, data2] = midiMessage.data;
+    const messageType = status & 0xf0;
+    const channel = status & 0x0f;
+
+    let elements = null;
+    switch (messageType) {
       case MIDIMessageTypes.NoteOn:
-        return this.#noteKeyMap;
+      case MIDIMessageTypes.NoteOff:
+        elements = this.#noteElements;
+        break;
+
       case MIDIMessageTypes.ControlChange:
-        return this.#ccKeyMap;
+        elements = this.#ccElements;
+        break;
+
+      default:
+        return;
     }
-    return null;
+
+    if (!elements[channel]) {
+      elements[channel] = [];
+    }
+    if (!elements[channel][data1]) {
+      elements[channel][data1] = new MIDIElement(
+        this,
+        status,
+        data1,
+        this.#save.bind(this)
+      );
+      this.#save();
+    }
+
+    const element = elements[channel][data1];
+
+    if (this.#options.onMessage) {
+      const midiData = {
+        raw: midiMessage.data,
+        status,
+        data1,
+        data2,
+        messageType,
+        channel,
+      };
+      this.#options.onMessage(this, element, midiData);
+    }
+
+    if (this.#options.executeScript) {
+      element.executeScript({
+        status,
+        data1,
+        data2,
+        messageType,
+        channel,
+        number: data1,
+        value: data2,
+        val: data2 / 127,
+      });
+    }
+  }
+
+  #save() {
+    this.#saveCallback(this);
   }
 
   toJSON() {
-    return {
+    let result = {
       device: {
-        name: this.#name,
-        manufacturer: this.#manufacturer,
+        name: this.name,
+        manufacturer: this.manufacturer,
       },
-      keymap: {
-        note: this.#noteKeyMap,
-        cc: this.#ccKeyMap,
-      },
+      mappings: [
+        ...this.#noteElements.flat().map((elem) => elem.toJSON()),
+        ...this.#ccElements.flat().map((elem) => elem.toJSON()),
+      ],
     };
+    return result;
   }
 }
 

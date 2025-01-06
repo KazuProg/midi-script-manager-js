@@ -4,37 +4,43 @@
     <script src="./../midi-script-manager.js"></script>
     <script src="./script.js"></script>
     <link rel="stylesheet" href="./style.css" />
+    <title>Custom Script Editor</title>
   </head>
   <body class="flex-col">
-    <div>
-      <button onclick="midi.reset()">Reset</button>
+    <h2 id="device-name"></h2>
+    <div id="keymap-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Control</th>
+            <th>Name</th>
+            <th>Script</th>
+          </tr>
+        </thead>
+        <tbody id="keymap-list"></tbody>
+      </table>
     </div>
-    <div id="detail" class="flex-row">
-      <div>
-        <span>Device</span>
-        <select data-field="device"></select>
-        <span>Message</span>
-        <span data-field="message"></span>
-        <span>Channel</span>
-        <span data-field="channel"></span>
-        <span>Data1</span>
-        <div class="flex-row">
-          <span data-field="data1"></span>
-          <input type="text" data-field="keyName" disabled />
+    <div id="script-editor" class="hidden">
+      <div class="container flex-col">
+        <h2>Edit: <span class="control-name"></span></h2>
+        <div class="element-details">
+          <span>Control Name</span>：
+          <input type="text" data-field="name" placeholder="Button1" />
+          <span>Value</span>：
+          <span class="control-value"></span>
+          <span>Script Name</span>：
+          <input type="text" data-field="scriptName" placeholder="Play/Pause" />
         </div>
-        <span>Data2</span>
-        <span data-field="data2"></span>
-      </div>
-      <div class="flex-col">
-        <div class="flex-row">
-          <span>Script</span>
-          <span style="margin-left: 1rem">Name：</span>
-          <input type="text" data-field="scriptName" disabled />
+        <textarea
+          type="text"
+          data-field="script"
+          placeholder="track1.play();"
+        ></textarea>
+        <div class="buttons">
+          <button onclick="discardElementDetails()">Discard</button>
+          <button onclick="saveElementDetails()">Save</button>
         </div>
-        <textarea type="text" data-field="script" disabled></textarea>
       </div>
     </div>
-    <h2 id="keymap-title"></h2>
-    <div id="keymap"></div>
   </body>
 </html>
