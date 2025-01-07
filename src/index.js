@@ -82,20 +82,24 @@ class MIDIScriptManager {
           return;
         } else {
           for (const device of data) {
-            this.#storageManager.saveObject(device);
-
-            // デバイスが存在する場合はマッピングを適用
-            const dev = this.findDevice(
-              device.device.name,
-              device.device.manufacturer
-            );
-            if (dev) {
-              dev.applyMappings(device.mappings);
-            }
+            this.importKeymapObject(device);
           }
         }
       }
     });
+  }
+
+  importKeymapObject(keymapObject) {
+    this.#storageManager.saveObject(keymapObject);
+
+    // デバイスが存在する場合はマッピングを適用
+    const dev = this.findDevice(
+      keymapObject.device.name,
+      keymapObject.device.manufacturer
+    );
+    if (dev) {
+      dev.applyMappings(keymapObject.mappings);
+    }
   }
 
   #MIDIInputChanged(MIDIInput) {

@@ -2,6 +2,7 @@
   <head>
     <meta charset="UTF-8" />
     <script src="./../midi-script-manager.js"></script>
+    <script src="https://kazuprog.github.io/file-handler-js/file-handler.js"></script>
     <script src="./script.js"></script>
     <link rel="stylesheet" href="./style.css" />
     <title>Custom Script Editor</title>
@@ -19,6 +20,10 @@
         </thead>
         <tbody id="keymap-list"></tbody>
       </table>
+    </div>
+    <div class="buttons">
+      <button onclick="exportKeymap()">Export</button>
+      <button onclick="importKeymap()">Import</button>
     </div>
     <div id="script-editor" class="hidden">
       <div class="container flex-col">

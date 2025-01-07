@@ -165,6 +165,21 @@ function closeEditor() {
   }
 }
 
+function importKeymap() {
+  FileHandler.readJson().then((data) => {
+    midi.importKeymapObject(data);
+    updateKeymaps(currentDevice);
+  });
+}
+
+function exportKeymap() {
+  FileHandler.downloadJson(
+    `${currentDevice.manufacturer} ${currentDevice.name}.json`,
+    currentDevice.toJSON(),
+    true
+  );
+}
+
 /**
  * Common functions
  */
