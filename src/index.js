@@ -5,11 +5,13 @@ import StorageManager from "./StorageManager.js";
 class MIDIScriptManager {
   static MessageTypes = MIDIMessageTypes;
   static scriptOrigin;
+  #serviceName;
   #options = {};
   #midiDevices = [];
   #storageManager;
 
-  constructor(options = {}) {
+  constructor(serviceName, options = {}) {
+    this.#serviceName = serviceName;
     this.#options = {
       localStorageKey: "midi-scripts",
       postMessageKey: "MIDIScriptManager",
@@ -58,6 +60,7 @@ class MIDIScriptManager {
   openCustomScriptEditor() {
     const EditorURL = `${MIDIScriptManager.scriptOrigin}/midi-script-manager-js/custom-script-editor/`;
     const params = new URLSearchParams({
+      service: this.#serviceName,
       targetOrigin: location.origin,
     });
 
@@ -114,10 +117,19 @@ class MIDIScriptManager {
 
     if (MIDIInput.state === "connected") {
       // デバイスを追加
-      const device = new MIDIDevice(MIDIInput, this.#saveControls.bind(this), {
-        ...this.#options,
-        data: this.#storageManager.load(MIDIInput.name, MIDIInput.manufacturer),
-      });
+      const device = new MIDIDevice(
+        MIDIInput,
+        this.#serviceName,
+        this.#saveControls.bind(this),
+        {
+          ...this.#options,
+          data: this.#storageManager.load(
+            MIDIInput.name,
+            MIDIInput.manufacturer,
+            this.#serviceName
+          ),
+        }
+      );
       this.#midiDevices.push(device);
       if (this.#options.onDeviceChange) {
         this.#options.onDeviceChange(device);

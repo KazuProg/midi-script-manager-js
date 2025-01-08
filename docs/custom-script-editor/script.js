@@ -9,7 +9,13 @@ let isChanged = false;
 let isClickEditor = false;
 
 window.addEventListener("load", async () => {
-  midi = new MIDIScriptManager({
+  const params = new URLSearchParams(window.location.search);
+  let serviceName = params.get("service");
+  if (serviceName === null) {
+    alert("WARNING: Service name is not specified.");
+    serviceName = "ScriptEditor";
+  }
+  midi = new MIDIScriptManager(serviceName, {
     onMessage: (device, element, midiData) => {
       latestElement = element;
       updateKeymaps(device);
@@ -174,7 +180,7 @@ function importKeymap() {
 
 function exportKeymap() {
   FileHandler.downloadJson(
-    `${currentDevice.manufacturer} ${currentDevice.name}.json`,
+    `${currentDevice.serviceName}_${currentDevice.manufacturer} ${currentDevice.name}.json`,
     currentDevice.toJSON(),
     true
   );

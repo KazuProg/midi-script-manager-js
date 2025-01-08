@@ -3,15 +3,17 @@ import MIDIMessageTypes from "./MIDIMessageTypes";
 
 class MIDIDevice {
   #input;
+  #serviceName;
   #saveCallback;
   #noteElements = [];
   #ccElements = [];
   #options = {};
 
-  constructor(MIDIInput, saveCallback, options = {}) {
+  constructor(MIDIInput, serviceName, saveCallback, options = {}) {
     this.#input = MIDIInput;
     this.#input.onmidimessage = this.#onMIDIMessage.bind(this);
 
+    this.#serviceName = serviceName;
     this.#saveCallback = saveCallback;
 
     this.#options = {
@@ -61,6 +63,10 @@ class MIDIDevice {
 
   get manufacturer() {
     return this.#input.manufacturer;
+  }
+
+  get serviceName() {
+    return this.#serviceName;
   }
 
   get noteElements() {
@@ -150,6 +156,7 @@ class MIDIDevice {
         name: this.name,
         manufacturer: this.manufacturer,
       },
+      service: this.#serviceName,
       mappings: [
         ...this.#noteElements.flat().map((elem) => elem.toJSON()),
         ...this.#ccElements.flat().map((elem) => elem.toJSON()),

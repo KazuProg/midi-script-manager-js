@@ -35,11 +35,12 @@ class StorageManager {
     return this.#data;
   }
 
-  load(deviceName, deviceManufacturer) {
+  load(deviceName, deviceManufacturer, serviceName) {
     return this.#data.find(
       (device) =>
         device.device.name === deviceName &&
-        device.device.manufacturer === deviceManufacturer
+        device.device.manufacturer === deviceManufacturer &&
+        device.service === serviceName
     );
   }
 
@@ -55,7 +56,8 @@ class StorageManager {
     const target = this.#data.find(
       (device) =>
         device.device.name === obj.device.name &&
-        device.device.manufacturer === obj.device.manufacturer
+        device.device.manufacturer === obj.device.manufacturer &&
+        device.service === obj.service
     );
 
     if (target) {
