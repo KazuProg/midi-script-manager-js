@@ -14,9 +14,14 @@ class StorageManager {
         targetOrigin,
         options.postMessageKey
       );
-      window.opener.addEventListener("beforeunload", () => {
-        window.close();
-      });
+      try {
+        // ドメインが異なるとエラーになるため、try-catchで囲む
+        window.opener.addEventListener("beforeunload", () => {
+          window.close();
+        });
+      } catch (e) {
+        console.log(e);
+      }
     } else {
       this.#storageHandler = new LocalStorageHandler(options.localStorageKey);
       window.addEventListener("storage", (event) => {
