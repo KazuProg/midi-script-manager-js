@@ -92,15 +92,33 @@ class MIDIScriptManager {
     });
   }
 
-  importKeymapObject(keymapObject) {
-    this.#storageManager.saveObject(keymapObject);
+  importKeymapObject(keymapObject, force = false) {
+    if (!this.#storageManager.isValidKeymapObject(keymapObject)) {
+      throw new Error("The format of the key mapping object is invalid.");
+    }
 
-    // デバイスが存在する場合はマッピングを適用
+    if (!force && keymapObject.service !== this.#serviceName) {
+      throw new Error(
+        `The service name of the provided object (${
+          keymapObject.service
+        }) does not match the current service name (${this.#serviceName}).`
+      );
+    }
+
     const dev = this.findDevice(
       keymapObject.device.name,
       keymapObject.device.manufacturer
     );
-    if (dev) {
+
+    if (!force && !dev) {
+      throw new Error(
+        `The device in the provided object (${keymapObject.device.manufacturer} ${keymapObject.device.name}) is not currently connected.`
+      );
+    }
+
+    this.#storageManager.saveObject(keymapObject);
+
+    if (keymapObject.service === this.#serviceName && dev) {
       dev.applyMappings(keymapObject.mappings);
     }
   }
