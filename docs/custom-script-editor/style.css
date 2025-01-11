@@ -19,8 +19,13 @@ body > * {
   padding: 0.5rem;
 }
 
-#device-name {
+header {
+  margin: 1em 0;
   text-align: center;
+}
+
+header > h2 {
+  margin: 0;
 }
 
 #keymap-table {

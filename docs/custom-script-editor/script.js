@@ -15,6 +15,7 @@ window.addEventListener("load", async () => {
     alert("WARNING: Service name is not specified.");
     serviceName = "ScriptEditor";
   }
+  document.querySelector("#service-name").innerText = serviceName;
   midi = new MIDIScriptManager(serviceName, {
     onMessage: (device, element, midiData) => {
       latestElement = element;
