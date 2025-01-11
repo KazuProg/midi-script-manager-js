@@ -2,16 +2,25 @@ import MIDIMessageTypes from "./MIDIMessageTypes";
 
 class MIDIElement {
   #device;
-  #midiStatus;
+  #midiType;
+  #midiChannel;
   #midiNumber;
   #name = null;
   #scriptName = null;
   #scriptCode = null;
   #saveCallback;
 
-  constructor(device, midiStatus, midiNumber, saveCallback, data = {}) {
+  constructor(
+    device,
+    midiType,
+    midiChannel,
+    midiNumber,
+    saveCallback,
+    data = {}
+  ) {
     this.#device = device;
-    this.#midiStatus = midiStatus;
+    this.#midiType = midiType;
+    this.#midiChannel = midiChannel;
     this.#midiNumber = midiNumber;
 
     this.#name = data?.name || null;
@@ -25,12 +34,12 @@ class MIDIElement {
     return this.#device;
   }
 
-  get messageType() {
-    return this.#midiStatus & 0xf0;
+  get type() {
+    return this.#midiType;
   }
 
   get channel() {
-    return this.#midiStatus & 0x0f;
+    return this.#midiChannel;
   }
 
   get number() {
@@ -39,12 +48,11 @@ class MIDIElement {
 
   get defaultName() {
     let name;
-    switch (this.messageType) {
-      case MIDIMessageTypes.NoteOff:
-      case MIDIMessageTypes.NoteOn:
+    switch (this.type) {
+      case MIDIMessageTypes.Note:
         name = this.#getNoteName(this.#midiNumber);
         break;
-      case MIDIMessageTypes.ControlChange:
+      case MIDIMessageTypes.CC:
         const hex = this.#midiNumber
           .toString(16)
           .toUpperCase()
@@ -121,7 +129,7 @@ class MIDIElement {
   }
 
   get midiID() {
-    return ((this.#midiStatus << 8) + this.#midiNumber).toString(16);
+    return this.type + ((this.channel << 8) + this.number).toString(16);
   }
 
   toJSON() {

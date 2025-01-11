@@ -5,9 +5,8 @@ class MIDIDevice {
   #input;
   #serviceName;
   #saveCallback;
-  #noteElements = [];
-  #ccElements = [];
-  #options = {};
+  #options;
+  #elements;
 
   constructor(MIDIInput, serviceName, saveCallback, options = {}) {
     this.#input = MIDIInput;
@@ -22,6 +21,12 @@ class MIDIDevice {
       data: null,
       ...options,
     };
+
+    this.#elements = {
+      [MIDIMessageTypes.Note]: Array.from({ length: 16 }, () => []),
+      [MIDIMessageTypes.CC]: Array.from({ length: 16 }, () => []),
+    };
+
     if (this.#options.data) {
       this.applyMappings(this.#options.data.mappings);
     }
@@ -32,27 +37,21 @@ class MIDIDevice {
       return;
     }
     for (const mapping of mappings) {
-      const midiData = parseInt(mapping.midi, 16);
+      const type = mapping.midi.substr(0, 1);
+      const channel = parseInt(mapping.midi.substr(1, 1), 16);
+      const number = parseInt(mapping.midi.substr(2, 2), 16);
+
       const element = new MIDIElement(
         this,
-        (midiData & 0xff00) >> 8,
-        midiData & 0x00ff,
+        type,
+        channel,
+        number,
         this.#save.bind(this),
         mapping
       );
-      if (
-        element.messageType === MIDIMessageTypes.NoteOn ||
-        element.messageType === MIDIMessageTypes.NoteOff
-      ) {
-        if (!this.#noteElements[element.channel]) {
-          this.#noteElements[element.channel] = [];
-        }
-        this.#noteElements[element.channel][element.number] = element;
-      } else if (element.messageType === MIDIMessageTypes.ControlChange) {
-        if (!this.#ccElements[element.channel]) {
-          this.#ccElements[element.channel] = [];
-        }
-        this.#ccElements[element.channel][element.number] = element;
+
+      if (type in this.#elements) {
+        this.#elements[type][channel][number] = element;
       }
     }
   }
@@ -70,15 +69,15 @@ class MIDIDevice {
   }
 
   get noteElements() {
-    return this.#noteElements;
+    return this.#elements[MIDIMessageTypes.Note];
   }
 
   get ccElements() {
-    return this.#ccElements;
+    return this.#elements[MIDIMessageTypes.CC];
   }
 
   get elements() {
-    return [...this.#noteElements.flat(), ...this.#ccElements.flat()];
+    return [...this.noteElements.flat(), ...this.ccElements.flat()];
   }
 
   findElementById(id) {
@@ -90,28 +89,25 @@ class MIDIDevice {
     const messageType = status & 0xf0;
     const channel = status & 0x0f;
 
-    let elements = null;
+    let type;
     switch (messageType) {
-      case MIDIMessageTypes.NoteOn:
-      case MIDIMessageTypes.NoteOff:
-        elements = this.#noteElements;
+      case MIDIMessageTypes.RawNoteOn:
+      case MIDIMessageTypes.RawNoteOff:
+        type = MIDIMessageTypes.Note;
         break;
-
-      case MIDIMessageTypes.ControlChange:
-        elements = this.#ccElements;
+      case MIDIMessageTypes.RawControlChange:
+        type = MIDIMessageTypes.CC;
         break;
-
       default:
         return;
     }
 
-    if (!elements[channel]) {
-      elements[channel] = [];
-    }
+    const elements = this.#elements[type];
     if (!elements[channel][data1]) {
       elements[channel][data1] = new MIDIElement(
         this,
-        status,
+        type,
+        channel,
         data1,
         this.#save.bind(this)
       );
@@ -126,7 +122,7 @@ class MIDIDevice {
         status,
         data1,
         data2,
-        messageType,
+        type,
         channel,
       };
       this.#options.onMessage(this, element, midiData);
@@ -137,7 +133,7 @@ class MIDIDevice {
         status,
         data1,
         data2,
-        messageType,
+        type,
         channel,
         number: data1,
         value: data2,
@@ -157,10 +153,7 @@ class MIDIDevice {
         manufacturer: this.manufacturer,
       },
       service: this.#serviceName,
-      mappings: [
-        ...this.#noteElements.flat().map((elem) => elem.toJSON()),
-        ...this.#ccElements.flat().map((elem) => elem.toJSON()),
-      ],
+      mappings: this.elements.map((elem) => elem.toJSON()),
     };
     return result;
   }

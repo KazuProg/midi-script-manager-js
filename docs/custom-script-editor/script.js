@@ -102,12 +102,11 @@ function updateKeymaps(device) {
 
 function controlName(keymap) {
   let type = "";
-  switch (keymap.messageType) {
-    case MIDIMessageType.NoteOff:
-    case MIDIMessageType.NoteOn:
+  switch (keymap.type) {
+    case MIDIMessageType.Note:
       type = "Note";
       break;
-    case MIDIMessageType.ControlChange:
+    case MIDIMessageType.CC:
       type = "CC";
       break;
   }
