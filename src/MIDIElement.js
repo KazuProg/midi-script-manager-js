@@ -129,7 +129,10 @@ class MIDIElement {
   }
 
   get midiID() {
-    return this.type + ((this.channel << 8) + this.number).toString(16);
+    return (
+      this.type +
+      ((this.channel << 8) + this.number).toString(16).padStart(3, "0")
+    );
   }
 
   toJSON() {
