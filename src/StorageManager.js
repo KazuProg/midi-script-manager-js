@@ -58,6 +58,10 @@ class StorageManager {
   }
 
   saveObject(obj) {
+    if (!this.isValidKeymapObject(obj)) {
+      throw new Error("The format of the key mapping object is invalid.");
+    }
+
     const target = this.#data.find(
       (device) =>
         device.device.name === obj.device.name &&
@@ -72,6 +76,29 @@ class StorageManager {
     }
 
     this.#storageHandler.save(this.#data);
+  }
+
+  isValidKeymapObject(obj) {
+    if (typeof obj !== "object" || obj === null) {
+      return false;
+    }
+
+    if (
+      typeof obj.device?.name !== "string" ||
+      typeof obj.device?.manufacturer !== "string"
+    ) {
+      return false;
+    }
+
+    if (typeof obj.service !== "string") {
+      return false;
+    }
+
+    if (!Array.isArray(obj.mappings)) {
+      return false;
+    }
+
+    return true;
   }
 }
 
