@@ -34,8 +34,7 @@ window.addEventListener("load", async () => {
     await midi.requestAccess();
   } catch (error) {
     alert(error);
-    console.log(error);
-    return;
+    throw error;
   }
 
   window.addEventListener("keydown", (e) => {
