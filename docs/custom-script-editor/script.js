@@ -171,8 +171,12 @@ function closeEditor() {
 
 function importKeymap() {
   FileHandler.readJson().then((data) => {
-    midi.importKeymapObject(data);
-    updateKeymaps(currentDevice);
+    try {
+      midi.importKeymapObject(data);
+      updateKeymaps(currentDevice);
+    } catch (error) {
+      alert(error.message);
+    }
   });
 }
 
