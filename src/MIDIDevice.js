@@ -9,8 +9,11 @@ class MIDIDevice {
   #options;
   #elements;
 
-  constructor(MIDIInput, serviceName, saveCallback, options = {}) {
-    this.#input = MIDIInput;
+  constructor(midiInput, serviceName, saveCallback, options = {}) {
+    if (!(midiInput instanceof MIDIInput)) {
+      throw new TypeError("Expected a MIDIInput object");
+    }
+    this.#input = midiInput;
     this.#input.onmidimessage = this.#onMIDIMessage.bind(this);
 
     this.#serviceName = serviceName;
