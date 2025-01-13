@@ -5,6 +5,7 @@ import StorageManager from "./StorageManager.js";
 class MIDIScriptManager {
   static MessageTypes = MIDIMessageTypes;
   static scriptOrigin;
+  #midiAccess;
   #serviceName;
   #options = {};
   #midiDevices = [];
@@ -45,6 +46,8 @@ class MIDIScriptManager {
       midiAccess.inputs.forEach((input) => {
         this.#MIDIInputChanged(input);
       });
+
+      this.#midiAccess = midiAccess;
     } catch (error) {
       throw new Error(`Failed to request MIDI access: ${error.message}`);
     }
@@ -146,6 +149,7 @@ class MIDIScriptManager {
             MIDIInput.manufacturer,
             this.#serviceName
           ),
+          midiAccess: this.#midiAccess,
         }
       );
       this.#midiDevices.push(device);

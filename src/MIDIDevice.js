@@ -3,6 +3,7 @@ import MIDIMessageTypes from "./MIDIMessageTypes";
 
 class MIDIDevice {
   #input;
+  #output;
   #serviceName;
   #saveCallback;
   #options;
@@ -19,6 +20,7 @@ class MIDIDevice {
       executeScript: false,
       onMessage: null,
       data: null,
+      midiAccess: null,
       ...options,
     };
 
@@ -29,6 +31,17 @@ class MIDIDevice {
 
     if (this.#options.data) {
       this.applyMappings(this.#options.data.mappings);
+    }
+
+    if (this.#options.midiAccess) {
+      this.#options.midiAccess.outputs.forEach((output) => {
+        if (
+          output.name === this.name &&
+          output.manufacturer === this.manufacturer
+        ) {
+          this.#output = output;
+        }
+      });
     }
   }
 
@@ -129,6 +142,11 @@ class MIDIDevice {
     }
 
     if (this.#options.executeScript) {
+      const output = (val) => {
+        if (this.#output) {
+          this.#output.send([status, data1, val]);
+        }
+      };
       element.executeScript({
         status,
         data1,
@@ -138,6 +156,7 @@ class MIDIDevice {
         number: data1,
         value: data2,
         val: data2 / 127,
+        output,
       });
     }
   }
