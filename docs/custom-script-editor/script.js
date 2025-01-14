@@ -4,9 +4,6 @@ const MIDIMessageType = MIDIScriptManager.MessageTypes;
 let midi;
 let currentDevice = null;
 let latestElement = null;
-let currentElement = null;
-let isChanged = false;
-let isClickEditor = false;
 
 window.addEventListener("load", async () => {
   const params = new URLSearchParams(window.location.search);
@@ -21,9 +18,8 @@ window.addEventListener("load", async () => {
       latestElement = element;
       updateKeymaps(device);
       highlightKeymap(element);
-      if (currentElement === element) {
-        document.querySelector("#script-editor .control-value").innerText =
-          midiData.data2;
+      if (ScriptEditor.currentMIDIElement === element) {
+        ScriptEditor.UIElements.controlValue.innerText = midiData.data2;
       }
     },
     onDeviceChange: (device) => {
@@ -40,41 +36,16 @@ window.addEventListener("load", async () => {
 
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      closeEditor();
+      ScriptEditor.close();
     }
     if (e.key === "F2") {
-      if (currentElement === null) {
-        editElement(latestElement);
+      if (ScriptEditor.currentMIDIElement === null) {
+        ScriptEditor.show(latestElement);
       }
     }
   });
 
-  document.querySelector("#script-editor").addEventListener("click", () => {
-    if (!isClickEditor) {
-      closeEditor();
-    }
-  });
-  document
-    .querySelector("#script-editor .container")
-    .addEventListener("click", () => {
-      isClickEditor = true;
-      setTimeout(() => {
-        isClickEditor = false;
-      }, 10);
-    });
-  document
-    .querySelector("#script-editor [data-field=name]")
-    .addEventListener("input", onChange);
-  document
-    .querySelector("#script-editor [data-field=scriptName]")
-    .addEventListener("input", onChange);
-  document
-    .querySelector("#script-editor [data-field=script]")
-    .addEventListener("input", onChange);
-
-  function onChange() {
-    isChanged = true;
-  }
+  ScriptEditor.init();
 });
 
 function updateKeymaps(device) {
@@ -95,7 +66,7 @@ function updateKeymaps(device) {
     tr.addEventListener("click", (e) => {
       const midiID = tr.id.substr(5);
       const elem = currentDevice.findElementById(midiID);
-      editElement(elem);
+      ScriptEditor.show(elem);
     });
     tableElem.appendChild(tr);
   }
@@ -125,49 +96,6 @@ function highlightKeymap(element) {
   });
   tr.classList.add("highlight");
   setTimeout(() => tr.classList.remove("highlight"), 1000);
-}
-
-function editElement(element) {
-  currentElement = element;
-  const editorElem = document.querySelector("#script-editor");
-  editorElem.querySelector(".control-name").innerText = controlName(element);
-  editorElem.querySelector("[data-field=name]").value = element.name;
-  editorElem.querySelector(".control-value").innerText = "";
-  editorElem.querySelector("[data-field=scriptName]").value =
-    element.scriptName;
-  editorElem.querySelector("[data-field=script]").value = element.scriptCode;
-  isChanged = false;
-  editorElem.classList.remove("hidden");
-  editorElem.querySelector("[data-field=name]").focus();
-}
-
-function saveElementDetails() {
-  const editorElem = document.querySelector("#script-editor");
-
-  currentElement.name = editorElem.querySelector("[data-field=name]").value;
-  currentElement.scriptName = editorElem.querySelector(
-    "[data-field=scriptName]"
-  ).value;
-  currentElement.scriptCode = editorElem.querySelector(
-    "[data-field=script]"
-  ).value;
-  isChanged = false;
-  updateKeymaps(currentDevice);
-  closeEditor();
-}
-
-function discardElementDetails() {
-  isChanged = false;
-  closeEditor();
-}
-
-function closeEditor() {
-  if (currentElement) {
-    if (!isChanged || confirm("変更を保存せずに閉じますか？")) {
-      currentElement = null;
-      document.querySelector("#script-editor").classList.add("hidden");
-    }
-  }
 }
 
 function importKeymap() {

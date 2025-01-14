@@ -4,6 +4,7 @@
     <script src="./../midi-script-manager.js"></script>
     <script src="./file-handler-js/file-handler.js"></script>
     <script src="./script.js"></script>
+    <script src="./script-editor.js"></script>
     <link rel="stylesheet" href="./style.css" />
     <title>Custom Script Editor</title>
   </head>
@@ -45,8 +46,8 @@
           placeholder="track1.play();"
         ></textarea>
         <div class="buttons">
-          <button onclick="discardElementDetails()">Discard</button>
-          <button onclick="saveElementDetails()">Save</button>
+          <button onclick="ScriptEditor.discardAndClose()">Discard</button>
+          <button onclick="ScriptEditor.saveAndClose()">Save</button>
         </div>
       </div>
     </div>
