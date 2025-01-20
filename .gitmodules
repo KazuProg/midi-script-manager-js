@@ -1,0 +1,3 @@
+[submodule "docs/custom-script-editor/file-handler-js"]
+	path = docs/custom-script-editor/file-handler-js
+	url = https://github.com/KazuProg/file-handler-js.git
