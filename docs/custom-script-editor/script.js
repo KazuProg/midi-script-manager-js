@@ -101,7 +101,7 @@ function highlightKeymap(element) {
 function importKeymap() {
   FileHandler.readJson().then((data) => {
     try {
-      midi.importKeymapObject(data);
+      midi.importKeymapObject(data.content);
       updateKeymaps(currentDevice);
     } catch (error) {
       alert(error.message);
