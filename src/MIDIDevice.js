@@ -156,9 +156,7 @@ class MIDIDevice {
         data2,
         type,
         channel,
-        number: data1,
         value: data2,
-        val: data2 / 127,
         output,
       });
     }
