@@ -154,6 +154,10 @@ select:focus {
   margin-left: 0.5rem;
 }
 
+.buttons button.delete {
+  background: #f00;
+}
+
 .flex-row {
   display: flex;
   flex-direction: row;

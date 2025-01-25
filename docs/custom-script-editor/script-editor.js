@@ -76,6 +76,14 @@ class _ScriptEditor {
     this.close();
   }
 
+  deleteAndClose() {
+    if (confirm("スクリプトを削除しますか？")) {
+      this.#UIElements.scriptName.value = "";
+      this.#UIElements.scriptCode.value = "";
+      this.saveAndClose();
+    }
+  }
+
   close() {
     if (this.#MIDIElement) {
       if (!this.#isChanged || confirm("変更を保存せずに閉じますか？")) {
