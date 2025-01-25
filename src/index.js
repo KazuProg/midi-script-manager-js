@@ -60,7 +60,7 @@ class MIDIScriptManager {
     );
   }
 
-  openCustomScriptEditor() {
+  openCustomScriptEditor(templates = null) {
     const EditorURL = `${MIDIScriptManager.scriptOrigin}/midi-script-manager-js/custom-script-editor/`;
     const params = new URLSearchParams({
       service: this.#serviceName,
@@ -82,6 +82,7 @@ class MIDIScriptManager {
             {
               sender: "MIDIScriptManager",
               data: this.#storageManager.loadAll(),
+              templates,
             },
             MIDIScriptManager.scriptOrigin
           );

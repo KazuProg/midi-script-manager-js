@@ -5,6 +5,10 @@ let midi;
 let currentDevice = null;
 let latestElement = null;
 
+document.addEventListener("receivedScriptTemplate", (e) => {
+  ScriptEditor.setTemplates(e.detail);
+});
+
 window.addEventListener("load", async () => {
   const params = new URLSearchParams(window.location.search);
   let serviceName = params.get("service");

@@ -14,6 +14,13 @@ class PostMessageHandler {
         if (event.data.sender && event.data.sender === this.#senderId) {
           window.removeEventListener("message", listener);
           resolve(event.data.data);
+          if (event.data.templates) {
+            document.dispatchEvent(
+              new CustomEvent("receivedScriptTemplate", {
+                detail: event.data.templates,
+              })
+            );
+          }
         }
       };
       window.addEventListener("message", listener);
