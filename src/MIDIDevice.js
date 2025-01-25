@@ -100,6 +100,14 @@ class MIDIDevice {
     return this.elements.find((elem) => elem.midiID === id);
   }
 
+  findElementByName(name) {
+    return this.elements.find((elem) => elem.name === name);
+  }
+
+  findElementByScriptName(scriptName) {
+    return this.elements.find((elem) => elem.scriptName === scriptName);
+  }
+
   #onMIDIMessage(midiMessage) {
     const [status, data1, data2] = midiMessage.data;
     const messageType = status & 0xf0;
@@ -145,10 +153,36 @@ class MIDIDevice {
     }
 
     if (this.#options.executeScript) {
-      const output = (val) => {
-        if (this.#output) {
-          this.#output.send([status, data1, val]);
+      const output = (arg1, arg2) => {
+        if (!this.#output) return;
+
+        let _status = status;
+        let _data1 = data1;
+        let _data2 = null;
+        if (typeof arg1 === "number") {
+          // [arg1, arg2] = [value, undefined]
+          _data2 = arg1;
+        } else if (Array.isArray(arg1) && arg1.length === 3) {
+          // [arg1, arg2] = [[status, data1, data2], undefined]
+          _status = arg1[0];
+          _data1 = arg1[1];
+          _data2 = arg1[2];
+        } else if (typeof arg1 === "string") {
+          // [arg1, arg2] = [name, value]
+          const elem =
+            this.findElementByName(arg1) || this.findElementByScriptName(arg1);
+
+          if (!elem) return;
+
+          _status =
+            (elem.type === MIDIMessageTypes.Note
+              ? MIDIMessageTypes.RawNoteOn
+              : MIDIMessageTypes.RawControlChange) | elem.channel;
+          _data1 = elem.number;
+          _data2 = arg2;
         }
+
+        this.#output.send([_status, _data1, _data2]);
       };
       element.executeScript({
         status,
